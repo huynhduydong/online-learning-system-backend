@@ -154,10 +154,9 @@ class TestUserLogin:
         headers = {'Authorization': f'Bearer {access_token}'}
         dashboard_response = client.get('/api/users/dashboard', headers=headers)
         
-        # Debug: print response if failed
+        # Fail test and show response if failed
         if dashboard_response.status_code != 200:
-            print(f"Dashboard response status: {dashboard_response.status_code}")
-            print(f"Dashboard response data: {dashboard_response.data}")
+            pytest.fail(f"Dashboard response status: {dashboard_response.status_code}, data: {dashboard_response.data}")
         
         assert dashboard_response.status_code == 200
         dashboard_data = json.loads(dashboard_response.data)
