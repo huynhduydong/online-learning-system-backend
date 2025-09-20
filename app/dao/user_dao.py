@@ -139,33 +139,33 @@ class UserDAO(BaseDAO):
             raise e
     
     # Profile management methods
-    def update_profile(self, user_id: int, first_name: Optional[str] = None, 
-                      last_name: Optional[str] = None) -> Optional[User]:
+    def update_profile(self, user_id: int, update_data: Dict[str, Any]) -> Optional[User]:
         """
         Cập nhật thông tin profile
         
         Args:
             user_id: ID của user
-            first_name: Tên mới (optional)
-            last_name: Họ mới (optional)
+            update_data: Dictionary chứa các trường cần cập nhật (e.g., 'first_name', 'last_name')
             
         Returns:
             Optional[User]: User instance đã cập nhật hoặc None
         """
         try:
-            update_data = {}
+            update_fields = {}
             
+            first_name = update_data.get('first_name')
             if first_name is not None:
                 User.validate_name(first_name, "First name")
-                update_data['first_name'] = first_name.strip()
+                update_fields['first_name'] = first_name.strip()
             
+            last_name = update_data.get('last_name')
             if last_name is not None:
                 User.validate_name(last_name, "Last name")
-                update_data['last_name'] = last_name.strip()
+                update_fields['last_name'] = last_name.strip()
             
-            if update_data:
-                update_data['updated_at'] = datetime.utcnow()
-                return self.update(user_id, **update_data)
+            if update_fields:
+                update_fields['updated_at'] = datetime.utcnow()
+                return self.update(user_id, **update_fields)
             
             return self.get_by_id(user_id)
             
