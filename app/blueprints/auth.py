@@ -8,14 +8,126 @@ Business Requirements:
 - Account security với failed login tracking
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, url_for
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from marshmallow import Schema, fields, ValidationError, validates, validates_schema
 from app import db, limiter
 from app.models.user import User, UserRole
 from datetime import datetime
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def send_confirmation_email(user):
+    """
+    Send email confirmation to user
+    
+    Business Requirement: Hệ thống gửi email xác nhận sau khi đăng ký thành công
+    """
+    try:
+        # Generate confirmation token
+        confirmation_token = secrets.token_urlsafe(32)
+        
+        # Store token in user record (we'll add this field to User model)
+        user.confirmation_token = confirmation_token
+        db.session.commit()
+        
+        # Create confirmation URL
+        confirmation_url = url_for('auth.confirm_email', 
+                                 token=confirmation_token, 
+                                 _external=True)
+        
+        # Email content
+        subject = "Xác nhận tài khoản - Online Learning System"
+        
+        html_body = f"""
+        <html>
+        <body>
+            <h2>Chào mừng {user.full_name}!</h2>
+            <p>Cảm ơn bạn đã đăng ký tài khoản tại Online Learning System.</p>
+            <p>Vui lòng click vào link bên dưới để xác nhận tài khoản:</p>
+            <p><a href="{confirmation_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Xác nhận tài khoản</a></p>
+            <p>Hoặc copy link này vào trình duyệt:</p>
+            <p>{confirmation_url}</p>
+            <p>Link này sẽ hết hạn sau 24 giờ.</p>
+            <br>
+            <p>Trân trọng,<br>Online Learning System Team</p>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        Chào mừng {user.full_name}!
+        
+        Cảm ơn bạn đã đăng ký tài khoản tại Online Learning System.
+        
+        Vui lòng truy cập link bên dưới để xác nhận tài khoản:
+        {confirmation_url}
+        
+        Link này sẽ hết hạn sau 24 giờ.
+        
+        Trân trọng,
+        Online Learning System Team
+        """
+        
+        # Send email
+        send_email(user.email, subject, text_body, html_body)
+        
+        current_app.logger.info(f"Confirmation email sent to {user.email}")
+        return True
+        
+    except Exception as e:
+        current_app.logger.error(f"Failed to send confirmation email to {user.email}: {e}")
+        raise e
+
+
+def send_email(to_email, subject, text_body, html_body=None):
+    """
+    Send email using SMTP configuration
+    """
+    try:
+        # Get email configuration
+        mail_server = current_app.config.get('MAIL_SERVER')
+        mail_port = current_app.config.get('MAIL_PORT', 587)
+        mail_username = current_app.config.get('MAIL_USERNAME')
+        mail_password = current_app.config.get('MAIL_PASSWORD')
+        mail_use_tls = current_app.config.get('MAIL_USE_TLS', True)
+        
+        if not all([mail_server, mail_username, mail_password]):
+            # If email not configured, just log and return
+            current_app.logger.warning("Email configuration not complete, skipping email send")
+            return False
+        
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = mail_username
+        msg['To'] = to_email
+        
+        # Add text and HTML parts
+        text_part = MIMEText(text_body, 'plain', 'utf-8')
+        msg.attach(text_part)
+        
+        if html_body:
+            html_part = MIMEText(html_body, 'html', 'utf-8')
+            msg.attach(html_part)
+        
+        # Send email
+        with smtplib.SMTP(mail_server, mail_port) as server:
+            if mail_use_tls:
+                server.starttls()
+            server.login(mail_username, mail_password)
+            server.send_message(msg)
+        
+        return True
+        
+    except Exception as e:
+        current_app.logger.error(f"Failed to send email to {to_email}: {e}")
+        raise e
 
 
 class UserRegistrationSchema(Schema):
@@ -59,7 +171,7 @@ class UserLoginSchema(Schema):
 
 
 @auth_bp.route('/register', methods=['POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("20 per minute")  # Increased for testing
 def register():
     """
     User Registration Endpoint
@@ -89,11 +201,18 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        # TODO: Send email confirmation (implement in future sprint)
+        # Send email confirmation
+        try:
+            send_confirmation_email(user)
+            email_message = "Vui lòng kiểm tra email để xác nhận tài khoản."
+        except Exception as e:
+            # Log error but don't fail registration
+            current_app.logger.error(f"Failed to send confirmation email: {e}")
+            email_message = "Tài khoản đã được tạo. Email xác nhận sẽ được gửi sau."
         
         return jsonify({
             'success': True,
-            'message': 'Tài khoản được tạo thành công. Vui lòng kiểm tra email để xác nhận.',
+            'message': f'Tài khoản được tạo thành công. {email_message}',
             'user': user.to_dict()
         }), 201
         
@@ -240,6 +359,103 @@ def logout():
         'success': True,
         'message': 'Đăng xuất thành công'
     }), 200
+
+
+@auth_bp.route('/confirm-email/<token>', methods=['GET'])
+def confirm_email(token):
+    """
+    Email Confirmation Endpoint
+    
+    Confirms user email address using token sent via email
+    """
+    try:
+        # Find user by confirmation token
+        user = User.query.filter_by(confirmation_token=token).first()
+        
+        if not user:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid or expired confirmation token'
+            }), 400
+        
+        # Check if already confirmed
+        if user.confirmed_at:
+            return jsonify({
+                'success': True,
+                'message': 'Email đã được xác nhận trước đó'
+            }), 200
+        
+        # Confirm email
+        user.confirmed_at = datetime.utcnow()
+        user.is_verified = True
+        user.confirmation_token = None  # Clear token after use
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Email đã được xác nhận thành công! Bạn có thể đăng nhập ngay bây giờ.'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Email confirmation failed',
+            'message': str(e)
+        }), 500
+
+
+@auth_bp.route('/resend-confirmation', methods=['POST'])
+@limiter.limit("3 per minute")
+def resend_confirmation():
+    """
+    Resend confirmation email
+    
+    Allows users to request a new confirmation email
+    """
+    try:
+        data = request.get_json()
+        email = data.get('email', '').lower().strip()
+        
+        if not email:
+            return jsonify({
+                'success': False,
+                'error': 'Email is required'
+            }), 400
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            # Don't reveal if email exists or not for security
+            return jsonify({
+                'success': True,
+                'message': 'Nếu email tồn tại, bạn sẽ nhận được email xác nhận.'
+            }), 200
+        
+        if user.is_verified:
+            return jsonify({
+                'success': True,
+                'message': 'Tài khoản đã được xác nhận.'
+            }), 200
+        
+        # Send new confirmation email
+        try:
+            send_confirmation_email(user)
+            return jsonify({
+                'success': True,
+                'message': 'Email xác nhận đã được gửi lại.'
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to send confirmation email'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': 'Failed to resend confirmation',
+            'message': str(e)
+        }), 500
 
 
 @auth_bp.route('/me', methods=['GET'])

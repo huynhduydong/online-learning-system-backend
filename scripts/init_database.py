@@ -78,6 +78,15 @@ def create_tables():
     try:
         db.create_all()
         print("✅ Database tables created successfully!")
+        
+        # Run email confirmation migration
+        print("🔄 Running email confirmation migration...")
+        try:
+            from migrations.add_email_confirmation_fields import upgrade
+            upgrade()
+        except Exception as e:
+            print(f"⚠️  Migration may have already been applied: {e}")
+        
         return True
     except Exception as e:
         print(f"❌ Error creating tables: {e}")
