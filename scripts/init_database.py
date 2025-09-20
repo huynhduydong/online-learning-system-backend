@@ -171,6 +171,8 @@ def create_mock_users():
                 role=user_data['role']
             )
             user.is_verified = user_data['is_verified']
+            if user_data['is_verified']:
+                user.confirmed_at = datetime.utcnow()
             
             db.session.add(user)
             created_users.append(user)
@@ -199,6 +201,8 @@ def create_mock_users():
                 role=UserRole.STUDENT
             )
             user.is_verified = random.choice([True, False])
+            if user.is_verified:
+                user.confirmed_at = datetime.utcnow()
             user.created_at = generate_random_date(datetime.now() - timedelta(days=365), datetime.now())
             
             db.session.add(user)

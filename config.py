@@ -23,6 +23,9 @@ class Config:
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB max file size
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or 'uploads'
     
+    # Base URL for generating full URLs (for avatar images, etc.)
+    BASE_URL = os.environ.get('BASE_URL') or 'http://localhost:5000'
+    
     # Email configuration
     MAIL_SERVER = os.environ.get('MAIL_SERVER')
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
