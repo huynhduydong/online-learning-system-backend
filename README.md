@@ -7,22 +7,34 @@ Hệ thống học tập trực tuyến được xây dựng với Flask, MySQL 
 ### ✅ Implemented Features
 
 #### User Stories Completed:
-- **OLS-US-001**: User Registration - Đăng ký tài khoản với email validation
+- **OLS-US-001**: ✅ **User Registration** - Đăng ký tài khoản với email validation và confirmation
 - **OLS-US-002**: User Login - Đăng nhập với JWT authentication  
 - **OLS-US-003**: User Profile Management - Quản lý thông tin cá nhân và avatar
 
+#### OLS-US-001 Implementation Details:
+- ✅ Email format validation và password strength requirements
+- ✅ Duplicate email detection với proper error messages
+- ✅ Email confirmation system với secure tokens
+- ✅ Default "Student" role assignment
+- ✅ Instructor role option during registration
+- ✅ Comprehensive validation cho all input fields
+- ✅ Rate limiting để prevent abuse
+- ✅ Full test coverage với automated tests
+
 #### API Endpoints:
 ```
-POST /api/auth/register     - Đăng ký tài khoản
-POST /api/auth/login        - Đăng nhập
-POST /api/auth/refresh      - Refresh JWT token
-POST /api/auth/logout       - Đăng xuất
-GET  /api/auth/me          - Thông tin user hiện tại
+POST /api/auth/register              - Đăng ký tài khoản với email confirmation
+POST /api/auth/login                 - Đăng nhập
+POST /api/auth/refresh               - Refresh JWT token
+POST /api/auth/logout                - Đăng xuất
+GET  /api/auth/me                   - Thông tin user hiện tại
+GET  /api/auth/confirm-email/<token> - Xác nhận email
+POST /api/auth/resend-confirmation   - Gửi lại email xác nhận
 
-GET  /api/users/profile     - Xem profile
-PUT  /api/users/profile     - Cập nhật profile  
-POST /api/users/upload-avatar - Upload ảnh đại diện
-GET  /api/users/dashboard   - Dashboard overview
+GET  /api/users/profile              - Xem profile
+PUT  /api/users/profile              - Cập nhật profile  
+POST /api/users/upload-avatar        - Upload ảnh đại diện
+GET  /api/users/dashboard            - Dashboard overview
 ```
 
 ## 🛠️ Quick Setup (Recommended)
@@ -124,19 +136,44 @@ python scripts/reset_database.py
 
 ## 🧪 Testing
 
-### Run Tests
+### Automated Tests
 ```bash
 # Install test dependencies
-pip install pytest pytest-flask
+pip install pytest pytest-flask pytest-cov requests
 
-# Run all tests
-pytest
+# Run all tests (unit + API integration)
+python unittest/run_tests.py
 
-# Run specific test file
-pytest tests/test_auth.py
+# Run specific User Story tests
+python unittest/run_tests.py --ticket OLS-US-001
+
+# Run only unit tests
+python unittest/run_tests.py --unit-only
+
+# Run only API integration tests
+python unittest/run_tests.py --api-only
+
+# Run with pytest directly
+pytest unittest/ -v
 
 # Run with coverage
-pytest --cov=app tests/
+pytest unittest/ --cov=app --cov-report=html --cov-report=term
+```
+
+### Test Organization
+```
+unittest/
+├── OLS_US_001_UserRegistration_Test.py      # Unit tests
+├── OLS_US_001_UserRegistration_API_Test.py  # API integration tests
+├── OLS_US_002_UserLogin_Test.py             # Login tests
+├── OLS_US_003_UserProfile_Test.py           # Profile tests
+└── run_tests.py                             # Test runner
+```
+
+### Email Testing
+```bash
+# Start email development server (for testing email confirmation)
+python scripts/email_dev_server.py
 ```
 
 ### Test API Endpoints

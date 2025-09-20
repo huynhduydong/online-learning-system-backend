@@ -52,6 +52,8 @@ class User(db.Model):
     # Security fields
     failed_login_attempts = db.Column(db.Integer, default=0)
     locked_until = db.Column(db.DateTime, nullable=True)
+    confirmation_token = db.Column(db.String(255), nullable=True)
+    confirmed_at = db.Column(db.DateTime, nullable=True)
     
     # Relationships
     courses = db.relationship('Course', backref='instructor', lazy='dynamic')
@@ -141,13 +143,15 @@ class User(db.Model):
             'is_active': self.is_active,
             'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat(),
-            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None
+            'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None
         }
         
         if include_sensitive:
             data.update({
                 'failed_login_attempts': self.failed_login_attempts,
-                'is_locked': self.is_locked
+                'is_locked': self.is_locked,
+                'has_confirmation_token': bool(self.confirmation_token)
             })
         
         return data
