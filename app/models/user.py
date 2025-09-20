@@ -48,6 +48,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
+    last_activity_at = db.Column(db.DateTime, nullable=True)
     
     # Security fields
     failed_login_attempts = db.Column(db.Integer, default=0)
@@ -104,7 +105,25 @@ class User(db.Model):
     def update_last_login(self):
         """Update last login timestamp"""
         self.last_login_at = datetime.utcnow()
+        self.last_activity_at = datetime.utcnow()
         db.session.commit()
+    
+    def update_activity(self):
+        """Update last activity timestamp for session tracking"""
+        self.last_activity_at = datetime.utcnow()
+        db.session.commit()
+    
+    def is_session_expired(self):
+        """
+        Check if user session has expired based on activity
+        Business Rule: Session timeout sau 24h nếu không có activity
+        """
+        if not self.last_activity_at:
+            return True
+        
+        from datetime import timedelta
+        session_timeout = timedelta(hours=24)
+        return datetime.utcnow() - self.last_activity_at > session_timeout
     
     def increment_failed_login(self):
         """
@@ -144,6 +163,7 @@ class User(db.Model):
             'is_verified': self.is_verified,
             'created_at': self.created_at.isoformat(),
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
+            'last_activity_at': self.last_activity_at.isoformat() if self.last_activity_at else None,
             'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None
         }
         

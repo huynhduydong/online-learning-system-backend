@@ -85,7 +85,7 @@ def get_profile():
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({
@@ -133,7 +133,7 @@ def update_profile():
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({
@@ -210,7 +210,7 @@ def upload_avatar():
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({
@@ -309,13 +309,14 @@ def get_dashboard():
     """
     Get User Dashboard
     
+    Implements User Story OLS-US-002: Redirect về trang dashboard sau khi login thành công
     Implements User Story OLS-US-003: User dashboard với course overview
     
     Returns dashboard data including enrolled courses and progress
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({
@@ -323,12 +324,16 @@ def get_dashboard():
                 'error': 'User not found'
             }), 404
         
+        # Update last activity for session tracking
+        user.update_last_login()
+        
         # Get user's enrolled courses (placeholder - will implement in Sprint 3)
         enrolled_courses = []
         
         # Get basic statistics
         dashboard_data = {
             'user': user.to_dict(),
+            'welcome_message': f'Chào mừng trở lại, {user.first_name}!',
             'statistics': {
                 'total_enrollments': 0,  # Will be implemented in Sprint 3
                 'completed_courses': 0,
@@ -336,7 +341,22 @@ def get_dashboard():
                 'total_learning_time': 0  # Will be implemented in Sprint 4
             },
             'recent_courses': enrolled_courses,
-            'achievements': []  # Will be implemented in Sprint 4
+            'achievements': [],  # Will be implemented in Sprint 4
+            'notifications': [],  # Will be implemented in Sprint 4
+            'quick_actions': [
+                {
+                    'title': 'Khám phá khóa học',
+                    'description': 'Tìm kiếm khóa học phù hợp với bạn',
+                    'action': 'browse_courses',
+                    'icon': 'search'
+                },
+                {
+                    'title': 'Tiếp tục học',
+                    'description': 'Quay lại khóa học đang học',
+                    'action': 'continue_learning',
+                    'icon': 'play'
+                }
+            ]
         }
         
         return jsonify({

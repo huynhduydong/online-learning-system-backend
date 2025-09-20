@@ -15,8 +15,9 @@ class Config:
     
     # JWT configuration
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-change-in-production'
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)  # Session timeout sau 24h
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+    JWT_REMEMBER_ME_EXPIRES = timedelta(days=30)  # Remember me cho 30 ngày
     
     # File upload configuration
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB max file size
