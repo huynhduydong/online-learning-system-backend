@@ -13,9 +13,9 @@ import os
 import subprocess
 import argparse
 from datetime import datetime
-
+from pathlib import Path
 # Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(str(Path(__file__).parent.parent))
 
 def run_pytest_tests(test_pattern=None):
     """Run pytest unit tests"""
