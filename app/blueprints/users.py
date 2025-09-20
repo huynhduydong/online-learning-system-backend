@@ -248,8 +248,8 @@ def upload_avatar():
         
         # Generate secure filename
         filename = secure_filename(file.filename)
-        file_extension = filename.rsplit('.', 1)[1].lower()
-        new_filename = f"user_{user.id}_{int(datetime.now().timestamp())}.{file_extension}"
+        # Always use .jpg extension since resize_image saves as JPEG
+        new_filename = f"user_{user.id}_{int(datetime.now().timestamp())}.jpg"
         file_path = os.path.join(avatars_folder, new_filename)
         
         # Save file
