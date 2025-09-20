@@ -13,7 +13,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 from marshmallow import Schema, fields, ValidationError, validates, validates_schema
 from app import db, limiter
 from app.models.user import User, UserRole
-from datetime import datetime
+from datetime import datetime, timedelta
 import secrets
 import smtplib
 from email.mime.text import MIMEText
@@ -286,15 +286,28 @@ def login():
         user.reset_failed_login()
         user.update_last_login()
         
-        # Create JWT tokens
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # Create JWT tokens với thời hạn khác nhau dựa trên remember_me
+        if data.get('remember_me'):
+            # Remember me: 30 ngày
+            access_token = create_access_token(
+                identity=str(user.id),
+                expires_delta=current_app.config['JWT_REMEMBER_ME_EXPIRES']
+            )
+            token_expires_in = 30 * 24 * 3600  # 30 days in seconds
+        else:
+            # Session bình thường: 24 giờ
+            access_token = create_access_token(identity=str(user.id))
+            token_expires_in = 24 * 3600  # 24 hours in seconds
+        
+        refresh_token = create_refresh_token(identity=str(user.id))
         
         return jsonify({
             'success': True,
             'message': 'Đăng nhập thành công',
             'access_token': access_token,
             'refresh_token': refresh_token,
+            'expires_in': token_expires_in,
+            'remember_me': data.get('remember_me', False),
             'user': user.to_dict()
         }), 200
         
@@ -323,7 +336,7 @@ def refresh():
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user or not user.is_active:
             return jsonify({
@@ -332,7 +345,7 @@ def refresh():
             }), 401
         
         # Create new access token
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'success': True,
@@ -469,7 +482,7 @@ def get_current_user():
     """
     try:
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
+        user = User.query.get(int(current_user_id))
         
         if not user:
             return jsonify({

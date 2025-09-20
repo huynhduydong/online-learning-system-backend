@@ -97,3 +97,69 @@ class TestUserLogin:
         assert response.status_code == 401
         response_data = json.loads(response.data)
         assert response_data['success'] is False
+    
+    def test_remember_me_login(self, client, sample_user):
+        """Test login with remember me option"""
+        data = {
+            'email': 'test@example.com',
+            'password': 'TestPassword123',
+            'remember_me': True
+        }
+        
+        response = client.post('/api/auth/login',
+                             data=json.dumps(data),
+                             content_type='application/json')
+        
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['success'] is True
+        assert response_data['remember_me'] is True
+        assert response_data['expires_in'] == 30 * 24 * 3600  # 30 days
+    
+    def test_normal_login_without_remember_me(self, client, sample_user):
+        """Test normal login without remember me"""
+        data = {
+            'email': 'test@example.com',
+            'password': 'TestPassword123',
+            'remember_me': False
+        }
+        
+        response = client.post('/api/auth/login',
+                             data=json.dumps(data),
+                             content_type='application/json')
+        
+        assert response.status_code == 200
+        response_data = json.loads(response.data)
+        assert response_data['success'] is True
+        assert response_data['remember_me'] is False
+        assert response_data['expires_in'] == 24 * 3600  # 24 hours
+    
+    def test_dashboard_access_after_login(self, client, sample_user):
+        """Test dashboard access after successful login"""
+        # First login
+        login_data = {
+            'email': 'test@example.com',
+            'password': 'TestPassword123'
+        }
+        
+        login_response = client.post('/api/auth/login',
+                                   data=json.dumps(login_data),
+                                   content_type='application/json')
+        
+        assert login_response.status_code == 200
+        login_result = json.loads(login_response.data)
+        access_token = login_result['access_token']
+        
+        # Then access dashboard
+        headers = {'Authorization': f'Bearer {access_token}'}
+        dashboard_response = client.get('/api/users/dashboard', headers=headers)
+        
+        # Fail test and show response if failed
+        if dashboard_response.status_code != 200:
+            pytest.fail(f"Dashboard response status: {dashboard_response.status_code}, data: {dashboard_response.data}")
+        
+        assert dashboard_response.status_code == 200
+        dashboard_data = json.loads(dashboard_response.data)
+        assert dashboard_data['success'] is True
+        assert 'dashboard' in dashboard_data
+        assert 'welcome_message' in dashboard_data['dashboard']

@@ -70,6 +70,45 @@ def create_app(config_name=None):
     def health_check():
         return {'status': 'healthy', 'message': 'Online Learning System API is running'}
     
+    # Activity tracking middleware
+    @app.before_request
+    def track_user_activity():
+        """Track user activity for session management"""
+        from flask import request, jsonify
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt_identity
+        from app.models.user import User
+        
+        # Skip activity tracking for certain endpoints
+        skip_endpoints = [
+            'auth.login', 'auth.register', 'auth.confirm_email', 
+            'auth.resend_confirmation', 'health_check'
+        ]
+        
+        if request.endpoint in skip_endpoints:
+            return
+        
+        try:
+            # Check if request has valid JWT token
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            
+            if user_id:
+                user = User.query.get(int(user_id))
+                if user and user.is_active:
+                    # Check if session has expired
+                    if user.is_session_expired():
+                        return jsonify({
+                            'success': False,
+                            'error': 'Session expired',
+                            'message': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại'
+                        }), 401
+                    
+                    # Update activity timestamp
+                    user.update_activity()
+        except:
+            # If JWT verification fails, continue without tracking
+            pass
+    
     # Error handlers
     @app.errorhandler(404)
     def not_found(error):
