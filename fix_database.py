@@ -4,7 +4,8 @@ Simple script to add missing columns to users table
 
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent))
 
 from app import create_app, db
 from sqlalchemy import text
