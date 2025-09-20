@@ -121,7 +121,9 @@ class UserService:
         
         try:
             # Validate image file
-            validate_image_file(file)
+            is_valid, error_message = validate_image_file(file)
+            if not is_valid:
+                raise ValidationException(error_message)
             
             # Generate unique filename
             file_extension = file.filename.rsplit('.', 1)[1].lower()
