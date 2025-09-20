@@ -3,7 +3,7 @@ User model cho authentication và profile management
 Implements User Stories: OLS-US-001, OLS-US-002, OLS-US-003
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
@@ -56,11 +56,11 @@ class User(db.Model):
     confirmation_token = db.Column(db.String(255), nullable=True)
     confirmed_at = db.Column(db.DateTime, nullable=True)
     
-    # Relationships
-    courses = db.relationship('Course', backref='instructor', lazy='dynamic')
-    enrollments = db.relationship('Enrollment', backref='user', lazy='dynamic')
-    questions = db.relationship('Question', backref='user', lazy='dynamic')
-    answers = db.relationship('Answer', backref='user', lazy='dynamic')
+    # Relationships (commented out for now as related models may not exist)
+    # courses = db.relationship('Course', backref='instructor', lazy='dynamic')
+    # enrollments = db.relationship('Enrollment', backref='user', lazy='dynamic')
+    # questions = db.relationship('Question', backref='user', lazy='dynamic')
+    # answers = db.relationship('Answer', backref='user', lazy='dynamic')
     
     def __init__(self, email, password, first_name, last_name, role=UserRole.STUDENT):
         """Initialize user với required fields"""
@@ -121,7 +121,6 @@ class User(db.Model):
         if not self.last_activity_at:
             return True
         
-        from datetime import timedelta
         session_timeout = timedelta(hours=24)
         return datetime.utcnow() - self.last_activity_at > session_timeout
     
@@ -132,7 +131,6 @@ class User(db.Model):
         """
         self.failed_login_attempts += 1
         if self.failed_login_attempts >= 5:
-            from datetime import timedelta
             self.locked_until = datetime.utcnow() + timedelta(minutes=15)
         db.session.commit()
     
@@ -149,6 +147,89 @@ class User(db.Model):
             return False
         return datetime.utcnow() < self.locked_until
     
+    def update_profile(self, first_name=None, last_name=None):
+        """
+        Update profile information with validation
+        Returns dict of changes made
+        """
+        changes = {}
+        
+        if first_name is not None:
+            is_valid, message = self.validate_name(first_name, "First name")
+            if not is_valid:
+                raise ValueError(message)
+            
+            if self.first_name != first_name:
+                changes['first_name'] = {
+                    'old': self.first_name,
+                    'new': first_name
+                }
+                self.first_name = first_name
+        
+        if last_name is not None:
+            is_valid, message = self.validate_name(last_name, "Last name")
+            if not is_valid:
+                raise ValueError(message)
+            
+            if self.last_name != last_name:
+                changes['last_name'] = {
+                    'old': self.last_name,
+                    'new': last_name
+                }
+                self.last_name = last_name
+        
+        return changes
+    
+    def set_profile_image(self, image_path):
+        """
+        Set profile image path
+        Business Rule: Ảnh đại diện được resize về 200x200px
+        """
+        self.profile_image = image_path
+    
+    @property
+    def has_profile_image(self):
+        """Check if user has a profile image"""
+        return bool(self.profile_image)
+    
+    def get_enrollment_stats(self):
+        """
+        Get enrollment statistics for profile display
+        Returns dict with enrollment counts
+        """
+        # Placeholder implementation - will be enhanced when enrollment models are available
+        return {
+            'total_enrollments': 0,
+            'completed_courses': 0,
+            'in_progress_courses': 0,
+            'join_date': self.created_at.strftime('%B %Y') if self.created_at else 'Unknown'
+        }
+    
+    def get_avatar_url(self):
+        """
+        Generate full avatar URL based on environment configuration
+        Returns full URL or None if no avatar
+        """
+        if not self.profile_image:
+            return None
+        
+        from flask import current_app, request
+        
+        # Get base URL from environment or request
+        base_url = current_app.config.get('BASE_URL')
+        if not base_url:
+            # Fallback to request URL if BASE_URL not configured
+            if request:
+                base_url = f"{request.scheme}://{request.host}"
+            else:
+                base_url = "http://localhost:5000"  # Default fallback
+        
+        # Remove trailing slash
+        base_url = base_url.rstrip('/')
+        
+        # Return full URL
+        return f"{base_url}/{self.profile_image}"
+    
     def to_dict(self, include_sensitive=False):
         """Convert user to dictionary for API responses"""
         data = {
@@ -158,10 +239,11 @@ class User(db.Model):
             'last_name': self.last_name,
             'full_name': self.full_name,
             'profile_image': self.profile_image,
+            'profile_image_url': self.get_avatar_url(),
             'role': self.role.value,
             'is_active': self.is_active,
             'is_verified': self.is_verified,
-            'created_at': self.created_at.isoformat(),
+            'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
             'last_activity_at': self.last_activity_at.isoformat() if self.last_activity_at else None,
             'confirmed_at': self.confirmed_at.isoformat() if self.confirmed_at else None
@@ -203,6 +285,29 @@ class User(db.Model):
             return False, "Password must contain at least one number"
         
         return True, "Password is strong"
+    
+    @staticmethod
+    def validate_name(name, field_name="Name"):
+        """
+        Validate name fields for profile updates
+        Business Rule: Names must be at least 2 characters long
+        """
+        if not name or not isinstance(name, str):
+            return False, f"{field_name} is required"
+        
+        name = name.strip()
+        if len(name) < 2:
+            return False, f"{field_name} must be at least 2 characters long"
+        
+        if len(name) > 100:
+            return False, f"{field_name} must be less than 100 characters"
+        
+        # Check for valid characters (letters, spaces, hyphens, apostrophes)
+        import re
+        if not re.match(r"^[a-zA-ZÀ-ỹ\s\-']+$", name):
+            return False, f"{field_name} contains invalid characters"
+        
+        return True, "Valid name"
     
     def __repr__(self):
         return f'<User {self.email}>'
