@@ -55,7 +55,17 @@ def resize_image(image_path, size=(200, 200)):
             y = (size[1] - img.size[1]) // 2
             
             new_img.paste(img, (x, y))
-            new_img.save(image_path, 'JPEG', quality=85)
+            # Determine format from file extension
+            ext = os.path.splitext(image_path)[1].lower()
+            format_map = {
+                '.jpg': 'JPEG',
+                '.jpeg': 'JPEG',
+                '.png': 'PNG',
+                '.gif': 'GIF'
+            }
+            img_format = format_map.get(ext, 'JPEG')
+            save_kwargs = {'quality': 85} if img_format == 'JPEG' else {}
+            new_img.save(image_path, img_format, **save_kwargs)
             
         return True
     except Exception as e:
