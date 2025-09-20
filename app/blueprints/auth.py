@@ -97,9 +97,10 @@ def send_email(to_email, subject, text_body, html_body=None):
         mail_password = current_app.config.get('MAIL_PASSWORD')
         mail_use_tls = current_app.config.get('MAIL_USE_TLS', True)
         
-        if not all([mail_server, mail_username, mail_password]):
+        missing = [k for k, v in {'server': mail_server, 'username': mail_username, 'password': mail_password}.items() if not v]
+        if missing:
             # If email not configured, just log and return
-            current_app.logger.warning("Email configuration not complete, skipping email send")
+            current_app.logger.warning("Email configuration incomplete. Missing: " + ', '.join(missing))
             return False
         
         # Create message
