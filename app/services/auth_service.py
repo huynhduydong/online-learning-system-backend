@@ -147,6 +147,7 @@ class AuthService:
                 'is_active': user.is_active,
                 'is_verified': user.is_verified,
                 'profile_image': user.get_avatar_url(),
+                'avatar_url': user.get_avatar_url(),
                 'created_at': user.created_at.isoformat() + 'Z' if user.created_at else None,
                 'last_login_at': user.last_login_at.isoformat() + 'Z' if user.last_login_at else None
             }
