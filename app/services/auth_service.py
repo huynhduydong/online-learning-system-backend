@@ -136,12 +136,19 @@ class AuthService:
         return {
             'access_token': access_token,
             'refresh_token': refresh_token,
+            'expires_in': 3600,  # 1 hour for access token
             'user': {
                 'id': user.id,
                 'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
                 'full_name': user.full_name,
                 'role': user.role.value,
-                'avatar_url': user.get_avatar_url()
+                'is_active': user.is_active,
+                'is_verified': user.is_verified,
+                'profile_image': user.get_avatar_url(),
+                'created_at': user.created_at.isoformat() + 'Z' if user.created_at else None,
+                'last_login_at': user.last_login_at.isoformat() + 'Z' if user.last_login_at else None
             }
         }
     

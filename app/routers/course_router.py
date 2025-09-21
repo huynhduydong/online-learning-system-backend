@@ -119,7 +119,21 @@ def get_categories():
     """Get all course categories"""
     try:
         categories = CourseService.get_categories()
-        return success_response(categories, "Categories retrieved successfully")
+        
+        # Format response to match requirements
+        formatted_categories = []
+        for category in categories:
+            formatted_categories.append({
+                'id': category['id'],
+                'name': category['name'],
+                'slug': category['slug'],
+                'description': category.get('description', '')
+            })
+        
+        return {
+            'success': True,
+            'data': formatted_categories
+        }
     except Exception as e:
         return error_response("Internal server error")
 
@@ -194,6 +208,24 @@ def get_similar_courses(course_id):
         limit = min(int(request.args.get('limit', 6)), 12)
         courses = CourseService.get_similar_courses(course_id, limit)
         return success_response(courses, "Similar courses retrieved successfully")
+    except Exception as e:
+        return error_response("Internal server error")
+
+@course_router.route('/languages', methods=['GET'])
+def get_languages():
+    """Get supported languages"""
+    try:
+        # Return hardcoded language list as per requirements
+        languages = [
+            {"code": "vi", "name": "Vietnamese"},
+            {"code": "en", "name": "English"},
+            {"code": "zh", "name": "Chinese"}
+        ]
+        
+        return {
+            'success': True,
+            'data': languages
+        }
     except Exception as e:
         return error_response("Internal server error")
 

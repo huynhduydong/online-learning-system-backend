@@ -63,6 +63,7 @@ def register_routers(app):
     from app.routers.auth_router import auth_router
     from app.routers.user_router import user_router
     from app.routers.course_router import course_router
+    from app.routers.instructor_router import instructor_router
     from app.routers.enrollment_router import enrollment_router
     from app.routers.payment_router import payment_router
     from app.routers.progress_router import progress_router
@@ -74,6 +75,7 @@ def register_routers(app):
         (auth_router, '/api/auth'),
         (user_router, '/api/users'),
         (course_router, '/api/courses'),
+        (instructor_router, '/api/instructor'),
         (enrollment_router, '/api/enrollments'),
         (payment_router, '/api/payments'),
         (progress_router, '/api/progress'),
