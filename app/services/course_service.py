@@ -344,10 +344,24 @@ class CourseService:
             raise ValidationException(f"Lỗi khi lấy khóa học đánh giá cao: {str(e)}")
     
     @staticmethod
-    def get_free_courses(limit=10):
-        """Get free courses"""
+    def get_free_courses(page=1, per_page=12):
+        """
+        Get free courses with pagination
+        
+        Args:
+            page (int): Page number (1-based)
+            per_page (int): Number of courses per page (max 50)
+        
+        Returns:
+            dict: Free courses data with pagination info
+        """
         try:
-            courses = CourseDAO.get_free_courses(limit)
+            # Validate pagination parameters
+            page = max(1, int(page))
+            per_page = min(50, max(1, int(per_page)))
+            offset = (page - 1) * per_page
+            
+            courses = CourseDAO.get_free_courses(offset=offset, limit=per_page)
             
             formatted_courses = []
             for course in courses:
@@ -355,7 +369,12 @@ class CourseService:
             
             return {
                 'success': True,
-                'data': formatted_courses
+                'data': formatted_courses,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'count': len(formatted_courses)
+                }
             }
             
         except Exception as e:
