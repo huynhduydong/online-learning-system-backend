@@ -219,10 +219,7 @@ def get_languages():
             {"code": "zh", "name": "Chinese"}
         ]
         
-        return {
-            'success': True,
-            'data': languages
-        }
+        return success_response(languages, "Languages retrieved successfully")
     except Exception as e:
         return error_response("Internal server error")
 
