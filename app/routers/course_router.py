@@ -130,10 +130,7 @@ def get_categories():
                 'description': category.get('description', '')
             })
         
-        return {
-            'success': True,
-            'data': formatted_categories
-        }
+        return success_response(formatted_categories, "Categories retrieved successfully")
     except Exception as e:
         return error_response("Internal server error")
 
