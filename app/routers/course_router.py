@@ -132,6 +132,37 @@ def get_categories_with_count():
     except Exception as e:
         return error_response("Internal server error")
 
+@course_router.route('/categories/<slug>/courses', methods=['GET'])
+def get_courses_by_category_slug(slug):
+    """
+    Get courses by category slug with pagination
+    
+    Query Parameters:
+    - page: Page number (default: 1)
+    - per_page: Items per page (default: 12, max: 50)
+    - sort_by: Sort field (newest, oldest, popularity, price_low, price_high, rating, title)
+    """
+    try:
+        # Get query parameters
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 12)), 50)
+        sort_by = request.args.get('sort_by', 'newest')
+        
+        # Get courses from service
+        result = CourseService.get_courses_by_category_slug(
+            slug=slug,
+            page=page,
+            per_page=per_page,
+            sort_by=sort_by
+        )
+        
+        return success_response(result, "Courses retrieved successfully")
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy danh mục" in str(e) else 400)
+    except Exception as e:
+        return error_response("Internal server error")
+
 @course_router.route('/<slug>', methods=['GET'])
 def get_course_by_slug(slug):
     """Get course details by slug"""
