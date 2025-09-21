@@ -67,6 +67,7 @@ def register_routers(app):
     from app.routers.payment_router import payment_router
     from app.routers.progress_router import progress_router
     from app.routers.qa_router import qa_router
+    from app.routers.cart_router import cart_router
     
     # Register routers with URL prefixes
     routers = [
@@ -76,7 +77,8 @@ def register_routers(app):
         (enrollment_router, '/api/enrollments'),
         (payment_router, '/api/payments'),
         (progress_router, '/api/progress'),
-        (qa_router, '/api/qa')
+        (qa_router, '/api/qa'),
+        (cart_router, '/api/cart')
     ]
     
     for router, url_prefix in routers:
