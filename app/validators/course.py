@@ -242,12 +242,12 @@ class CourseCreateSchema(Schema):
     
     title = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     short_description = fields.Str(required=True, validate=validate.Length(min=1, max=500))
-    slug = fields.Str(missing=None, validate=validate.Length(max=255))
-    language = fields.Str(missing='vi', validate=validate.Length(min=2, max=5))
-    difficulty_level = fields.Str(missing='beginner', validate=validate.OneOf(['beginner', 'intermediate', 'advanced']))
-    category_id = fields.Int(missing=None, validate=validate.Range(min=1))
-    price = fields.Decimal(missing=0, validate=validate.Range(min=0))
-    is_free = fields.Bool(missing=True)
+    slug = fields.Str(load_default=None, validate=validate.Length(max=255))
+    language = fields.Str(load_default='vi', validate=validate.Length(min=2, max=5))
+    difficulty_level = fields.Str(load_default='beginner', validate=validate.OneOf(['beginner', 'intermediate', 'advanced']))
+    category_id = fields.Int(load_default=None, validate=validate.Range(min=1))
+    price = fields.Decimal(load_default=0, validate=validate.Range(min=0))
+    is_free = fields.Bool(load_default=True)
     
     @validates_schema
     def validate_pricing(self, data, **kwargs):
