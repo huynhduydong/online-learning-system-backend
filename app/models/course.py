@@ -124,9 +124,6 @@ class Course(db.Model):
             self.total_ratings += 1
             self.average_rating = total_score / self.total_ratings
         
-        if self.total_ratings == 1:
-            self.total_ratings = 1
-
 class Category(db.Model):
     __tablename__ = 'categories'
     
