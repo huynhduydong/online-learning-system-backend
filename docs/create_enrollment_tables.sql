@@ -1,6 +1,6 @@
 
 -- =====================================================================
-CREATE TABLE  enrollments (
+CREATE TABLE enrollments (
     id VARCHAR(36) PRIMARY KEY,
     user_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE  enrollments (
 -- =====================================================================
 -- PAYMENTS TABLE
 -- =====================================================================
-CREATE TABLE  payments (
+CREATE TABLE payments (
     id VARCHAR(36) PRIMARY KEY,
     
     -- Foreign keys

@@ -6,7 +6,6 @@ Implements course enrollment and registration functionality
 import uuid
 from enum import Enum
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy import Numeric
 from app import db
 
