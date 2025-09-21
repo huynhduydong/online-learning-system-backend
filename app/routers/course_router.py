@@ -93,7 +93,7 @@ def get_free_courses():
         page = int(request.args.get('page', 1))
         per_page = min(int(request.args.get('per_page', 12)), 50)
         
-        result = CourseService.get_free_courses(page, per_page)
+        result = CourseService.get_free_courses(per_page)
         return success_response(result, "Free courses retrieved successfully")
     except Exception as e:
         return error_response("Internal server error")
