@@ -1,6 +1,6 @@
 
 -- =====================================================================
-CREATE TABLE  enrollments (
+CREATE TABLE enrollments (
     id VARCHAR(36) PRIMARY KEY,
     user_id INTEGER NOT NULL,
     course_id INTEGER NOT NULL,
