@@ -308,6 +308,70 @@ class CourseService:
             raise ValidationException(f"Lỗi khi lấy danh mục với số lượng khóa học: {str(e)}")
     
     @staticmethod
+    def get_courses_by_category_slug(slug, page=1, per_page=12, sort_by='newest'):
+        """Get courses by category slug with pagination"""
+        try:
+            # First, get the category by slug
+            category = CategoryDAO.get_category_by_slug(slug)
+            if not category:
+                raise ValidationException("Không tìm thấy danh mục")
+            
+            # Validate pagination parameters
+            page = max(1, int(page))
+            per_page = min(50, max(1, int(per_page)))
+            
+            # Validate sort parameter
+            valid_sorts = ['newest', 'oldest', 'popularity', 'price_low', 'price_high', 'rating', 'title']
+            if sort_by not in valid_sorts:
+                sort_by = 'newest'
+            
+            # Create filters for this category
+            filters = {'category_id': category.id}
+            
+            # Get courses from DAO
+            result = CourseDAO.get_published_courses(
+                page=page,
+                per_page=per_page,
+                filters=filters,
+                sort_by=sort_by
+            )
+            
+            # Format course data for response
+            formatted_courses = []
+            for course in result['courses']:
+                formatted_courses.append(CourseService._format_course_for_catalog(course))
+            
+            return {
+                'success': True,
+                'data': {
+                    'category': {
+                        'id': category.id,
+                        'name': category.name,
+                        'slug': category.slug,
+                        'description': category.description,
+                        'icon': category.icon
+                    },
+                    'courses': formatted_courses,
+                    'pagination': {
+                        'total': result['total'],
+                        'pages': result['pages'],
+                        'current_page': result['current_page'],
+                        'per_page': result['per_page'],
+                        'has_next': result['has_next'],
+                        'has_prev': result['has_prev'],
+                        'next_page': result['next_page'],
+                        'prev_page': result['prev_page']
+                    },
+                    'sort_by': sort_by
+                }
+            }
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            raise ValidationException(f"Lỗi khi lấy khóa học theo danh mục: {str(e)}")
+    
+    @staticmethod
     def get_popular_courses(limit=10):
         """Get popular courses"""
         try:
