@@ -4,7 +4,7 @@ Online Learning System Backend
 """
 
 from app import create_app, db
-from app.models import User, Course, Enrollment, Progress, Payment, Question, Answer
+from app.models import User, Course, Enrollment, Progress, Payment, Question, Answer, LessonProgress, CourseProgress
 import os
 from dotenv import load_dotenv
 
@@ -23,6 +23,8 @@ def make_shell_context():
         'Course': Course,
         'Enrollment': Enrollment,
         'Progress': Progress,
+        'LessonProgress': LessonProgress,
+        'CourseProgress': CourseProgress,
         'Payment': Payment,
         'Question': Question,
         'Answer': Answer

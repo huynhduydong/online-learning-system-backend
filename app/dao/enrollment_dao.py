@@ -77,12 +77,33 @@ class EnrollmentDAO(BaseDAO):
             tuple[List[Enrollment], int]: (enrollments list, total count)
         """
         try:
+            # Validate inputs
+            if not isinstance(user_id, int) or user_id <= 0:
+                raise ValueError(f"Invalid user_id: {user_id}")
+            
+            if page < 1:
+                page = 1
+            if limit < 1 or limit > 100:
+                limit = 10
+            
+            # Build base query with safer relationship loading
             query = self.session.query(Enrollment).filter(
                 Enrollment.user_id == user_id
-            ).options(
-                joinedload(Enrollment.course),
-                joinedload(Enrollment.user)
             )
+            
+            # Use selectinload instead of joinedload for better performance and error handling
+            try:
+                from sqlalchemy.orm import selectinload
+                query = query.options(
+                    selectinload(Enrollment.course),
+                    selectinload(Enrollment.user)
+                )
+            except ImportError:
+                # Fallback to joinedload if selectinload is not available
+                query = query.options(
+                    joinedload(Enrollment.course),
+                    joinedload(Enrollment.user)
+                )
             
             # Apply status filter if provided
             if status_filter:
@@ -93,16 +114,53 @@ class EnrollmentDAO(BaseDAO):
                     # Invalid status, return empty result
                     return [], 0
             
-            # Get total count before pagination
-            total_count = query.count()
+            # Get total count before pagination with error handling
+            try:
+                total_count = query.count()
+            except SQLAlchemyError as e:
+                # If count fails, try simpler query
+                simple_query = self.session.query(Enrollment).filter(
+                    Enrollment.user_id == user_id
+                )
+                if status_filter:
+                    try:
+                        status_enum = EnrollmentStatus(status_filter)
+                        simple_query = simple_query.filter(Enrollment.status == status_enum)
+                    except ValueError:
+                        return [], 0
+                total_count = simple_query.count()
             
             # Apply pagination
             offset = (page - 1) * limit
-            enrollments = query.order_by(desc(Enrollment.enrollment_date)).offset(offset).limit(limit).all()
             
-            return enrollments, total_count
+            try:
+                enrollments = query.order_by(desc(Enrollment.enrollment_date)).offset(offset).limit(limit).all()
+            except SQLAlchemyError as e:
+                # If complex query fails, try simpler one without relationships
+                simple_query = self.session.query(Enrollment).filter(
+                    Enrollment.user_id == user_id
+                )
+                if status_filter:
+                    try:
+                        status_enum = EnrollmentStatus(status_filter)
+                        simple_query = simple_query.filter(Enrollment.status == status_enum)
+                    except ValueError:
+                        return [], 0
+                
+                enrollments = simple_query.order_by(desc(Enrollment.enrollment_date)).offset(offset).limit(limit).all()
+            
+            return enrollments or [], total_count or 0
+            
         except SQLAlchemyError as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Database error in get_user_enrollments for user {user_id}: {str(e)}")
             raise e
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Unexpected error in get_user_enrollments for user {user_id}: {str(e)}")
+            raise SQLAlchemyError(f"Error retrieving user enrollments: {str(e)}")
     
     def check_user_access(self, user_id: int, course_id: int) -> Optional[Enrollment]:
         """

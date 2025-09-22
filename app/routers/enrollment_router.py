@@ -27,6 +27,8 @@ def health():
     return {'status': 'Enrollment service is running', 'version': '1.0.0'}
 
 
+
+
 @enrollment_router.route('/register', methods=['POST'])
 @jwt_required()
 def register_for_course():
@@ -188,34 +190,57 @@ def get_my_courses():
         if not user_id:
             return error_response('Authentication required', 401)
         
+        # Validate and convert user_id
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Invalid user_id from JWT: {user_id}, error: {str(e)}")
+            return error_response('Invalid authentication token', 401)
+        
         # Get query parameters
         status_filter = request.args.get('status')
-        page = request.args.get('page', 1)
-        limit = request.args.get('limit', 10)
+        page = request.args.get('page', '1')
+        limit = request.args.get('limit', '10')
         
         # Validate parameters
-        if status_filter:
-            status_filter = EnrollmentValidator.validate_status_filter(status_filter)
-        page, limit = EnrollmentValidator.validate_pagination_params(page, limit)
+        try:
+            if status_filter:
+                status_filter = EnrollmentValidator.validate_status_filter(status_filter)
+            page, limit = EnrollmentValidator.validate_pagination_params(page, limit)
+        except ValidationException as ve:
+            logger.warning(f"Parameter validation failed: {ve.errors}")
+            return error_response('Invalid parameters', 400, details=ve.errors)
         
         # Get user enrollments
-        result = enrollment_service.get_user_enrollments(
-            user_id=int(user_id),
-            status_filter=status_filter,
-            page=page,
-            limit=limit
-        )
+        try:
+            result = enrollment_service.get_user_enrollments(
+                user_id=user_id,
+                status_filter=status_filter,
+                page=page,
+                limit=limit
+            )
+        except ValidationException as ve:
+            logger.warning(f"Service validation error: {ve.errors}")
+            return error_response('Failed to retrieve enrollments', 422, details=ve.errors)
+        except Exception as e:
+            logger.error(f"Service error getting user enrollments: {str(e)}", exc_info=True)
+            return error_response('Failed to retrieve enrollments', 500)
         
-        logger.info(f"User enrollments retrieved for user {user_id}")
-        return success_response('User enrollments retrieved', result['data'], 
-                              pagination=result['pagination'])
+        # Return response with proper format
+        response_data = {
+            'enrollments': result['data'],
+            'pagination': result.get('pagination')
+        }
+        
+        logger.info(f"User enrollments retrieved successfully for user {user_id}")
+        return success_response(response_data, 'User enrollments retrieved')
         
     except ValidationException as e:
         details = getattr(e, "errors", {"error": [str(e)]})
         logger.warning(f"Validation error getting user enrollments: {details}")
         return error_response('Validation failed', 422, details=details)
     except Exception as e:
-        logger.error(f"Unexpected error getting user enrollments: {str(e)}")
+        logger.error(f"Unexpected error getting user enrollments: {str(e)}", exc_info=True)
         return error_response('Internal server error', 500)
 
 

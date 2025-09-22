@@ -188,6 +188,7 @@ class Lesson(db.Model):
     duration_minutes = db.Column(db.Integer)
     sort_order = db.Column(db.Integer, default=0)
     is_preview = db.Column(db.Boolean, default=False)
+    is_published = db.Column(db.Boolean, default=False)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

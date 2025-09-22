@@ -3,9 +3,12 @@ Course Router
 API endpoints for course catalog browsing and management
 """
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required
 from app.services.course_service import CourseService
+from app.services.progress_service import ProgressService
 from app.utils.response import success_response, error_response
+from app.utils.auth import get_current_user
 from app.exceptions.validation_exception import ValidationException
 
 course_router = Blueprint('courses', __name__)
@@ -229,3 +232,116 @@ def get_languages():
 def health_check():
     """Health check endpoint"""
     return success_response({"status": "healthy"}, "Course service is running")
+
+# === LESSON AND PROGRESS ENDPOINTS ===
+
+@course_router.route('/<course_slug>/lessons', methods=['GET'])
+@jwt_required()
+def get_course_lessons(course_slug):
+    """
+    Get course with all lessons and user progress
+    
+    Args:
+        course_slug: Course slug identifier
+        
+    Returns:
+        Course data with modules, lessons, and progress information
+    """
+    try:
+        user = get_current_user()
+        result = ProgressService.get_course_lessons_with_progress(user, course_slug)
+        return success_response(result['data'], "Course lessons retrieved successfully")
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy" in str(e) else 400)
+    except Exception as e:
+        return error_response("Internal server error")
+
+@course_router.route('/<course_slug>/lessons/<int:lesson_id>', methods=['GET'])
+@jwt_required()
+def get_lesson_details(course_slug, lesson_id):
+    """
+    Get specific lesson details with content and progress
+    
+    Args:
+        course_slug: Course slug identifier
+        lesson_id: Lesson ID
+        
+    Returns:
+        Detailed lesson data with content and user progress
+    """
+    try:
+        user = get_current_user()
+        result = ProgressService.get_lesson_details_with_progress(user, course_slug, lesson_id)
+        return success_response(result['data'], "Lesson details retrieved successfully")
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy" in str(e) else 400)
+    except Exception as e:
+        return error_response("Internal server error")
+
+@course_router.route('/<course_slug>/lessons/<int:lesson_id>/complete', methods=['POST'])
+@jwt_required()
+def mark_lesson_complete(course_slug, lesson_id):
+    """
+    Mark a lesson as completed
+    
+    Args:
+        course_slug: Course slug identifier
+        lesson_id: Lesson ID
+        
+    Returns:
+        Updated lesson progress data
+    """
+    try:
+        user = get_current_user()
+        result = ProgressService.mark_lesson_complete(user, course_slug, lesson_id)
+        return success_response(result['data'], "Lesson marked as completed")
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy" in str(e) else 400)
+    except Exception as e:
+        return error_response("Internal server error")
+
+@course_router.route('/<course_slug>/lessons/<int:lesson_id>/progress', methods=['POST'])
+@jwt_required()
+def track_lesson_progress(course_slug, lesson_id):
+    """
+    Track lesson progress (watch time and completion percentage)
+    
+    Args:
+        course_slug: Course slug identifier
+        lesson_id: Lesson ID
+        
+    Request Body:
+        {
+            "watch_time": int (seconds, optional),
+            "completion_percentage": float (0-100, optional)
+        }
+        
+    Returns:
+        Updated lesson progress data
+    """
+    try:
+        user = get_current_user()
+        
+        # Get request data
+        data = request.get_json() or {}
+        watch_time = data.get('watch_time')
+        completion_percentage = data.get('completion_percentage')
+        
+        # Validate at least one parameter is provided
+        if watch_time is None and completion_percentage is None:
+            return error_response("Either watch_time or completion_percentage must be provided")
+        
+        result = ProgressService.track_lesson_progress(
+            user, course_slug, lesson_id, 
+            watch_time=watch_time, 
+            completion_percentage=completion_percentage
+        )
+        return success_response(result['data'], "Lesson progress updated successfully")
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy" in str(e) else 400)
+    except Exception as e:
+        return error_response("Internal server error")

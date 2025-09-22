@@ -100,7 +100,8 @@ def setup_middleware(app):
         # Skip activity tracking for certain endpoints
         skip_endpoints = [
             'auth.login', 'auth.register', 'auth.confirm_email', 
-            'auth.resend_confirmation', 'health_check'
+            'auth.resend_confirmation', 'health_check',
+            'enrollments.health', 'enrollments.debug_my_courses'
         ]
         
         if request.endpoint in skip_endpoints:
@@ -112,20 +113,31 @@ def setup_middleware(app):
             user_id = get_jwt_identity()
             
             if user_id:
-                user = User.query.get(int(user_id))
-                if user and user.is_active:
-                    # Check if session has expired
-                    if user.is_session_expired():
-                        return jsonify({
-                            'success': False,
-                            'error': 'Session expired',
-                            'message': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại'
-                        }), 401
-                    
-                    # Update activity timestamp
-                    user.update_activity()
-        except:
+                try:
+                    user = User.query.get(int(user_id))
+                    if user and user.is_active:
+                        # Check if session has expired
+                        if user.is_session_expired():
+                            return jsonify({
+                                'success': False,
+                                'error': 'Session expired',
+                                'message': 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại'
+                            }), 401
+                        
+                        # Update activity timestamp
+                        user.update_activity()
+                except Exception as db_error:
+                    # Log database error but don't crash the request
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Database error in middleware for user {user_id}: {str(db_error)}")
+                    # Continue without tracking activity
+                    pass
+        except Exception as jwt_error:
             # If JWT verification fails, continue without tracking
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.debug(f"JWT verification failed in middleware: {str(jwt_error)}")
             pass
 
 
