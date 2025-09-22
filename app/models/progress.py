@@ -151,12 +151,18 @@ class CourseProgress(db.Model):
             if hasattr(self, key):
                 setattr(self, key, value)
     
-    def update_progress(self):
-        """Recalculate progress based on lesson progress"""
-        from app.dao.course_dao import CourseDAO
+    def update_progress(self, course_dao=None):
+        """Recalculate progress based on lesson progress.
+        
+        Args:
+            course_dao: DAO object with get_by_id(course_id) method. If None, imports CourseDAO.
+        """
+        if course_dao is None:
+            from app.dao.course_dao import CourseDAO
+            course_dao = CourseDAO
         
         # Get total lessons for this course
-        course = CourseDAO.get_by_id(self.course_id)
+        course = course_dao.get_by_id(self.course_id)
         if course:
             self.total_lessons = course.total_lessons
         
