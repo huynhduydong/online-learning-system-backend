@@ -19,9 +19,11 @@ from datetime import datetime
 from app import db, limiter
 from app.models.user import User
 from app.services.user_service import UserService
+from app.services.progress_service import ProgressService
 from app.validators.user import UserProfileUpdateSchema, AvatarUploadSchema, UserSearchSchema
 from app.utils.response import success_response, error_response, validation_error_response
 from app.utils.security import sanitize_input, allowed_file, validate_image_file
+from app.utils.auth import get_current_user
 from app.exceptions.base import ValidationException, BusinessLogicException, APIException
 
 user_router = Blueprint('users', __name__)
@@ -293,3 +295,35 @@ def get_avatar_info():
     except Exception as e:
         current_app.logger.error(f"Get avatar info error: {e}")
         return error_response('Failed to get avatar info. Please try again.', 500)
+
+
+@user_router.route('/me/courses/<course_slug>/progress', methods=['GET'])
+@limiter.limit("60 per minute")
+@jwt_required()
+def get_user_course_progress(course_slug):
+    """
+    Get User Course Progress
+    
+    Returns detailed progress information for a specific course
+    including lesson completion, watch time, and overall progress
+    
+    Args:
+        course_slug: Course slug identifier
+        
+    Returns:
+        Detailed course progress with lesson breakdown
+    """
+    try:
+        user = get_current_user()
+        result = ProgressService.get_course_progress(user, course_slug)
+        
+        return success_response(
+            message="Course progress retrieved successfully",
+            data=result['data']
+        )
+        
+    except ValidationException as e:
+        return error_response(str(e), 404 if "Không tìm thấy" in str(e) else 400)
+    except Exception as e:
+        current_app.logger.error(f"Get course progress error: {e}")
+        return error_response('Failed to get course progress. Please try again.', 500)

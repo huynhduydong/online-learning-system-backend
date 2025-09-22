@@ -365,31 +365,76 @@ class EnrollmentService:
             Dict[str, Any]: User enrollments with pagination
         """
         try:
-            enrollments, total_count = self.enrollment_dao.get_user_enrollments(
-                user_id, status_filter, page, limit
-            )
+            # Validate user_id
+            if not isinstance(user_id, int) or user_id <= 0:
+                logger.error(f"Invalid user_id: {user_id}")
+                raise ValidationException({"user_id": ["Invalid user ID"]})
             
-            # Convert to response format
+            # Validate pagination parameters
+            if page < 1:
+                page = 1
+            if limit < 1:
+                limit = 10
+            elif limit > 50:
+                limit = 50
+            
+            logger.info(f"Getting enrollments for user {user_id}, status: {status_filter}, page: {page}, limit: {limit}")
+            
+            # Get enrollments from DAO with error handling
+            try:
+                enrollments, total_count = self.enrollment_dao.get_user_enrollments(
+                    user_id, status_filter, page, limit
+                )
+            except SQLAlchemyError as e:
+                logger.error(f"Database error getting user enrollments for user {user_id}: {str(e)}")
+                raise ValidationException({"error": ["Database error retrieving enrollments"]})
+            except Exception as e:
+                logger.error(f"Unexpected DAO error for user {user_id}: {str(e)}")
+                raise ValidationException({"error": ["Failed to retrieve enrollments from database"]})
+            
+            # Ensure we have valid data
+            if enrollments is None:
+                enrollments = []
+            if total_count is None:
+                total_count = 0
+            
+            # Convert to response format with error handling
             enrollment_data = []
             for enrollment in enrollments:
-                data = enrollment.to_dict(include_course_info=True, include_progress=True)
-                enrollment_data.append(data)
+                try:
+                    if enrollment is not None:
+                        data = enrollment.to_dict(include_course_info=True, include_progress=True)
+                        enrollment_data.append(data)
+                except Exception as e:
+                    logger.warning(f"Error converting enrollment {getattr(enrollment, 'id', 'unknown')} to dict: {str(e)}")
+                    # Skip this enrollment but continue with others
+                    continue
             
-            # Calculate pagination info
-            total_pages = (total_count + limit - 1) // limit
+            # Calculate pagination info safely
+            try:
+                total_pages = max(1, (total_count + limit - 1) // limit) if total_count > 0 else 1
+            except (ZeroDivisionError, TypeError):
+                total_pages = 1
             
-            return {
+            result = {
                 "data": enrollment_data,
                 "pagination": {
                     "current_page": page,
                     "total_pages": total_pages,
                     "total_items": total_count,
-                    "per_page": limit
+                    "per_page": limit,
+                    "has_next": page < total_pages,
+                    "has_prev": page > 1
                 }
             }
             
+            logger.info(f"Successfully retrieved {len(enrollment_data)} enrollments for user {user_id}")
+            return result
+            
+        except ValidationException:
+            raise
         except Exception as e:
-            logger.error(f"Error getting user enrollments: {str(e)}")
+            logger.error(f"Unexpected error getting user enrollments for user {user_id}: {str(e)}", exc_info=True)
             raise ValidationException({"error": ["Failed to retrieve enrollments"]})
     
     def check_course_access(self, user_id: int, course_id: str) -> Dict[str, Any]:

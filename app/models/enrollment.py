@@ -150,45 +150,91 @@ class Enrollment(db.Model):
         
     def to_dict(self, include_course_info=False, include_progress=False):
         """Convert enrollment to dictionary for API responses"""
-        data = {
-            'id': self.id,
-            'course_id': self.course_id,
-            'user_id': self.user_id,
-            'status': self.status.value,
-            'payment_status': self.payment_status.value,
-            'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
-            'activation_date': self.activation_date.isoformat() if self.activation_date else None,
-            'payment_amount': float(self.payment_amount),
-            'discount_applied': float(self.discount_applied),
-            'access_granted': self.access_granted,
-            'full_name': self.full_name,
-            'email': self.email
-        }
-        
-        if include_course_info and self.course:
-            data['course'] = {
-                'id': self.course.id,
-                'title': self.course.title,
-                'slug': self.course.slug,
-                'thumbnail_url': self.course.thumbnail_url,
-                'difficulty_level': self.course.difficulty_level.value if self.course.difficulty_level else None,
-                'instructor': {
-                    'id': self.course.instructor_id,
-                    'name': self.course.instructor_name
-                } if self.course.instructor_name else None
+        try:
+            # Base data with safe conversions
+            data = {
+                'id': self.id,
+                'course_id': self.course_id,
+                'user_id': self.user_id,
+                'status': self.status.value if self.status else 'pending',
+                'payment_status': self.payment_status.value if self.payment_status else 'pending',
+                'enrollment_date': self.enrollment_date.isoformat() if self.enrollment_date else None,
+                'activation_date': self.activation_date.isoformat() if self.activation_date else None,
+                'payment_amount': float(self.payment_amount) if self.payment_amount is not None else 0.0,
+                'discount_applied': float(self.discount_applied) if self.discount_applied is not None else 0.0,
+                'access_granted': bool(self.access_granted) if self.access_granted is not None else False,
+                'full_name': self.full_name or '',
+                'email': self.email or ''
             }
-        
-        if include_progress:
-            # This will be enhanced when progress tracking is implemented
-            data['progress'] = {
-                'completed_lessons': 0,
-                'total_lessons': self.course.total_lessons if self.course else 0,
-                'percentage': 0,
-                'last_accessed': None,
-                'total_time_spent': 0
+            
+            # Add course information safely
+            if include_course_info:
+                try:
+                    if self.course:
+                        data['course'] = {
+                            'id': self.course.id,
+                            'title': getattr(self.course, 'title', 'Unknown Course'),
+                            'slug': getattr(self.course, 'slug', ''),
+                            'thumbnail_url': getattr(self.course, 'thumbnail_url', None),
+                            'difficulty_level': (
+                                self.course.difficulty_level.value 
+                                if hasattr(self.course, 'difficulty_level') and self.course.difficulty_level 
+                                else None
+                            ),
+                            'instructor': {
+                                'id': getattr(self.course, 'instructor_id', None),
+                                'name': getattr(self.course, 'instructor_name', None)
+                            } if hasattr(self.course, 'instructor_name') and self.course.instructor_name else None
+                        }
+                    else:
+                        data['course'] = None
+                except Exception:
+                    # If there's an error accessing course data, set to None
+                    data['course'] = None
+            
+            # Add progress information safely
+            if include_progress:
+                try:
+                    total_lessons = 0
+                    if self.course and hasattr(self.course, 'total_lessons'):
+                        total_lessons = getattr(self.course, 'total_lessons', 0)
+                    
+                    data['progress'] = {
+                        'completed_lessons': 0,
+                        'total_lessons': total_lessons,
+                        'percentage': 0,
+                        'last_accessed': None,
+                        'total_time_spent': 0
+                    }
+                except Exception:
+                    # If there's an error accessing progress data, set defaults
+                    data['progress'] = {
+                        'completed_lessons': 0,
+                        'total_lessons': 0,
+                        'percentage': 0,
+                        'last_accessed': None,
+                        'total_time_spent': 0
+                    }
+            
+            return data
+            
+        except Exception as e:
+            # Fallback to basic data if there are any errors
+            return {
+                'id': getattr(self, 'id', None),
+                'course_id': getattr(self, 'course_id', None),
+                'user_id': getattr(self, 'user_id', None),
+                'status': 'pending',
+                'payment_status': 'pending',
+                'enrollment_date': None,
+                'activation_date': None,
+                'payment_amount': 0.0,
+                'discount_applied': 0.0,
+                'access_granted': False,
+                'full_name': '',
+                'email': '',
+                'error': 'Error converting enrollment data'
             }
-        
-        return data
     
     def __repr__(self):
         return f'<Enrollment {self.id}: User {self.user_id} -> Course {self.course_id}>'

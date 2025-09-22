@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import desc, asc
 from app import db
 from app.models.user import User, UserRole
-from app.models.course import Course, Category, CourseStatus, DifficultyLevel
+from app.models.course import Course, Category, CourseStatus, DifficultyLevel, Module, Lesson, Content, ContentType
 from app.dao.course_dao import CourseDAO, CategoryDAO
 from app.exceptions.base import ValidationException, BusinessLogicException
 
@@ -341,3 +341,363 @@ class InstructorService:
             slug = slug[:50].rstrip('-')
         
         return slug
+    
+    # Module Management Methods
+    
+    @staticmethod
+    def get_course_modules(instructor_id: int, course_id: int) -> List[Dict]:
+        """
+        Get all modules for a specific course
+        """
+        try:
+            # Verify course ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            # Get modules ordered by sort_order
+            modules = Module.query.filter_by(course_id=course_id)\
+                                .order_by(Module.sort_order, Module.created_at)\
+                                .all()
+            
+            return [InstructorService._format_module(module) for module in modules]
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            raise BusinessLogicException(f"Failed to retrieve modules: {str(e)}")
+    
+    @staticmethod
+    def create_module(instructor_id: int, course_id: int, title: str, **kwargs) -> Dict:
+        """
+        Create a new module for a course
+        """
+        try:
+            # Verify course ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            # Set sort_order if not provided
+            sort_order = kwargs.get('order', 1)
+            
+            # If sort_order is not provided, set it to the next available order
+            if 'order' not in kwargs:
+                max_order = db.session.query(db.func.max(Module.sort_order))\
+                                    .filter_by(course_id=course_id).scalar()
+                sort_order = (max_order or 0) + 1
+            
+            # Create module
+            module = Module(
+                course_id=course_id,
+                title=title,
+                description=kwargs.get('description'),
+                sort_order=sort_order
+            )
+            
+            db.session.add(module)
+            db.session.commit()
+            
+            return InstructorService._format_module(module)
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to create module: {str(e)}")
+    
+    @staticmethod
+    def update_module(instructor_id: int, course_id: int, module_id: int, **kwargs) -> Dict:
+        """
+        Update a module
+        """
+        try:
+            # Verify course ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            # Get module
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Update fields
+            for field, value in kwargs.items():
+                if field == 'order':
+                    module.sort_order = value
+                elif hasattr(module, field) and value is not None:
+                    setattr(module, field, value)
+            
+            module.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            return InstructorService._format_module(module)
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to update module: {str(e)}")
+    
+    @staticmethod
+    def delete_module(instructor_id: int, course_id: int, module_id: int) -> None:
+        """
+        Delete a module
+        """
+        try:
+            # Verify course ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            # Get module
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Check if module has lessons (if you have lessons relationship)
+            # This would prevent deletion of modules with content
+            # if hasattr(module, 'lessons') and module.lessons:
+            #     raise BusinessLogicException("Cannot delete module with existing lessons")
+            
+            db.session.delete(module)
+            db.session.commit()
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to delete module: {str(e)}")
+    
+    @staticmethod
+    def _format_module(module: Module) -> Dict:
+        """Format module data for API response"""
+        return {
+            'id': module.id,
+            'course_id': module.course_id,
+            'title': module.title,
+            'description': module.description,
+            'order': module.sort_order,
+            'created_at': module.created_at.isoformat() + 'Z' if module.created_at else None,
+            'updated_at': module.updated_at.isoformat() + 'Z' if module.updated_at else None
+        }
+    
+    # Lesson Management Methods
+    
+    @staticmethod
+    def get_module_lessons(instructor_id: int, course_id: int, module_id: int) -> List[Dict]:
+        """
+        Get all lessons for a specific module
+        """
+        try:
+            # Verify course and module ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Get lessons ordered by sort_order
+            lessons = Lesson.query.filter_by(module_id=module_id)\
+                                .order_by(Lesson.sort_order, Lesson.created_at)\
+                                .all()
+            
+            return [InstructorService._format_lesson(lesson) for lesson in lessons]
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            raise BusinessLogicException(f"Failed to retrieve lessons: {str(e)}")
+    
+    @staticmethod
+    def create_lesson(instructor_id: int, course_id: int, module_id: int, title: str, content_type: str, **kwargs) -> Dict:
+        """
+        Create a new lesson for a module
+        """
+        try:
+            # Verify course and module ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Convert content_type string to enum
+            try:
+                content_type_enum = ContentType(content_type)
+            except ValueError:
+                raise ValidationException({"content_type": ["Invalid content type"]})
+            
+            # Set sort_order if not provided
+            sort_order = kwargs.get('order', 1)
+            
+            # If order is not provided, set it to the next available order
+            if 'order' not in kwargs:
+                max_order = db.session.query(db.func.max(Lesson.sort_order))\
+                                    .filter_by(module_id=module_id).scalar()
+                sort_order = (max_order or 0) + 1
+            
+            # Create lesson
+            lesson = Lesson(
+                module_id=module_id,
+                title=title,
+                content_type=content_type_enum,
+                description=kwargs.get('description'),
+                duration_minutes=kwargs.get('duration_minutes', 0),
+                sort_order=sort_order,
+                is_preview=kwargs.get('is_preview', False),
+                is_published=kwargs.get('is_published', False)
+            )
+            
+            db.session.add(lesson)
+            db.session.flush()  # Get lesson ID for content creation
+            
+            # Create content record if needed
+            video_url = kwargs.get('video_url')
+            content_data = kwargs.get('content_data')
+            
+            if video_url or content_data:
+                content = Content(
+                    lesson_id=lesson.id,
+                    title=f"Content for {title}",
+                    content_data=content_data,
+                    file_url=video_url if content_type == 'video' else None,
+                    sort_order=1
+                )
+                db.session.add(content)
+            
+            db.session.commit()
+            
+            return InstructorService._format_lesson(lesson)
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to create lesson: {str(e)}")
+    
+    @staticmethod
+    def update_lesson(instructor_id: int, course_id: int, module_id: int, lesson_id: int, **kwargs) -> Dict:
+        """
+        Update a lesson
+        """
+        try:
+            # Verify course and module ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Get lesson
+            lesson = Lesson.query.filter_by(id=lesson_id, module_id=module_id).first()
+            if not lesson:
+                raise ValidationException({"lesson": ["Lesson not found"]})
+            
+            # Update lesson fields
+            for field, value in kwargs.items():
+                if field == 'order':
+                    lesson.sort_order = value
+                elif field == 'content_type' and value:
+                    try:
+                        lesson.content_type = ContentType(value)
+                    except ValueError:
+                        raise ValidationException({"content_type": ["Invalid content type"]})
+                elif field in ['video_url', 'content_data']:
+                    # Update content record
+                    content = Content.query.filter_by(lesson_id=lesson_id).first()
+                    if content:
+                        if field == 'video_url':
+                            content.file_url = value
+                        elif field == 'content_data':
+                            content.content_data = value
+                        content.updated_at = datetime.utcnow()
+                    elif value:  # Create new content if it doesn't exist
+                        content = Content(
+                            lesson_id=lesson_id,
+                            title=f"Content for {lesson.title}",
+                            content_data=value if field == 'content_data' else None,
+                            file_url=value if field == 'video_url' else None,
+                            sort_order=1
+                        )
+                        db.session.add(content)
+                elif hasattr(lesson, field) and value is not None:
+                    setattr(lesson, field, value)
+            
+            lesson.updated_at = datetime.utcnow()
+            db.session.commit()
+            
+            return InstructorService._format_lesson(lesson)
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to update lesson: {str(e)}")
+    
+    @staticmethod
+    def delete_lesson(instructor_id: int, course_id: int, module_id: int, lesson_id: int) -> None:
+        """
+        Delete a lesson
+        """
+        try:
+            # Verify course and module ownership
+            course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
+            if not course:
+                raise ValidationException({"course": ["Course not found"]})
+            
+            module = Module.query.filter_by(id=module_id, course_id=course_id).first()
+            if not module:
+                raise ValidationException({"module": ["Module not found"]})
+            
+            # Get lesson
+            lesson = Lesson.query.filter_by(id=lesson_id, module_id=module_id).first()
+            if not lesson:
+                raise ValidationException({"lesson": ["Lesson not found"]})
+            
+            # Delete associated content records first
+            Content.query.filter_by(lesson_id=lesson_id).delete()
+            
+            # Delete lesson
+            db.session.delete(lesson)
+            db.session.commit()
+            
+        except ValidationException:
+            raise
+        except Exception as e:
+            db.session.rollback()
+            raise BusinessLogicException(f"Failed to delete lesson: {str(e)}")
+    
+    @staticmethod
+    def _format_lesson(lesson: Lesson) -> Dict:
+        """Format lesson data for API response"""
+        formatted = {
+            'id': lesson.id,
+            'module_id': lesson.module_id,
+            'title': lesson.title,
+            'description': lesson.description,
+            'content_type': lesson.content_type.value,
+            'duration_minutes': lesson.duration_minutes,
+            'order': lesson.sort_order,
+            'is_preview': lesson.is_preview,
+            'is_published': lesson.is_published,
+            'created_at': lesson.created_at.isoformat() + 'Z' if lesson.created_at else None,
+            'updated_at': lesson.updated_at.isoformat() + 'Z' if lesson.updated_at else None
+        }
+        
+        # Add content data if available
+        if hasattr(lesson, 'contents') and lesson.contents:
+            content = lesson.contents[0]  # Get first content
+            formatted.update({
+                'video_url': content.file_url if lesson.content_type == ContentType.VIDEO else None,
+                'content_data': content.content_data
+            })
+        
+        return formatted
