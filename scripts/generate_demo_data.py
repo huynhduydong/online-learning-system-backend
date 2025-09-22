@@ -9,12 +9,16 @@ import random
 from datetime import datetime, timedelta
 from decimal import Decimal
 from faker import Faker
+from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Set environment for MySQL database
-os.environ['DATABASE_URL'] = 'mysql+pymysql://ols_user:ols_password_2024@localhost/online_learning_dev'
+# Load environment variables from .env file if present
+load_dotenv()
 
+# Ensure DATABASE_URL is set
+if 'DATABASE_URL' not in os.environ:
+    raise RuntimeError("DATABASE_URL environment variable is not set. Please set it in your environment or in a .env file.")
 from app import create_app, db
 
 # Import all models
