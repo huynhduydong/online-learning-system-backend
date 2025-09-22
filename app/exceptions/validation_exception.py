@@ -10,17 +10,19 @@ class ValidationException(Exception):
     or when input validation fails at the service layer.
     """
     
-    def __init__(self, message, field_errors=None):
+    def __init__(self, errors):
         """
         Initialize ValidationException.
         
         Args:
-            message (str): Error message
-            field_errors (dict): Optional field-specific errors
+            errors (dict): Error details, e.g. {"email": ["This field is required"]}
         """
-        super().__init__(message)
-        self.message = message
-        self.field_errors = field_errors or {}
-    
-    def __str__(self):
-        return self.message
+        # errors là dict, ví dụ {"email": ["..."]}
+        self.errors = errors
+        # để str(e) đọc được thay vì "<exception str() failed>"
+        try:
+            import json
+            msg = json.dumps(errors, ensure_ascii=False)
+        except Exception:
+            msg = str(errors)
+        super().__init__(msg)

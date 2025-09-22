@@ -71,7 +71,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy danh mục khóa học: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy danh mục khóa học: {str(e)}"]})
     
     @staticmethod
     def _process_filters(filters):
@@ -83,31 +83,31 @@ class CourseService:
             try:
                 processed['category_id'] = int(filters['category_id'])
             except (ValueError, TypeError):
-                raise ValidationException("ID danh mục không hợp lệ")
+                raise ValidationException({"category_id": ["ID danh mục không hợp lệ"]})
         
         # Price range filters
         if filters.get('min_price') is not None:
             try:
                 min_price = Decimal(str(filters['min_price']))
                 if min_price < 0:
-                    raise ValidationException("Giá tối thiểu không thể âm")
+                    raise ValidationException({"min_price": ["Giá tối thiểu không thể âm"]})
                 processed['min_price'] = min_price
             except (ValueError, TypeError):
-                raise ValidationException("Giá tối thiểu không hợp lệ")
+                raise ValidationException({"min_price": ["Giá tối thiểu không hợp lệ"]})
         
         if filters.get('max_price') is not None:
             try:
                 max_price = Decimal(str(filters['max_price']))
                 if max_price < 0:
-                    raise ValidationException("Giá tối đa không thể âm")
+                    raise ValidationException({"max_price": ["Giá tối đa không thể âm"]})
                 processed['max_price'] = max_price
             except (ValueError, TypeError):
-                raise ValidationException("Giá tối đa không hợp lệ")
+                raise ValidationException({"max_price": ["Giá tối đa không hợp lệ"]})
         
         # Validate price range
         if processed.get('min_price') and processed.get('max_price'):
             if processed['min_price'] > processed['max_price']:
-                raise ValidationException("Giá tối thiểu không thể lớn hơn giá tối đa")
+                raise ValidationException({"price_range": ["Giá tối thiểu không thể lớn hơn giá tối đa"]})
         
         # Free courses filter
         if filters.get('is_free'):
@@ -134,16 +134,16 @@ class CourseService:
                 if 1 <= min_rating <= 5:
                     processed['min_rating'] = min_rating
                 else:
-                    raise ValidationException("Đánh giá tối thiểu phải từ 1 đến 5")
+                    raise ValidationException({"min_rating": ["Đánh giá tối thiểu phải từ 1 đến 5"]})
             except (ValueError, TypeError):
-                raise ValidationException("Đánh giá tối thiểu không hợp lệ")
+                raise ValidationException({"min_rating": ["Đánh giá tối thiểu không hợp lệ"]})
         
         # Instructor filter
         if filters.get('instructor_id'):
             try:
                 processed['instructor_id'] = int(filters['instructor_id'])
             except (ValueError, TypeError):
-                raise ValidationException("ID giảng viên không hợp lệ")
+                raise ValidationException({"instructor_id": ["ID giảng viên không hợp lệ"]})
         
         # Search filter
         if filters.get('search'):
@@ -201,7 +201,7 @@ class CourseService:
         try:
             course = CourseDAO.get_course_by_slug(slug)
             if not course:
-                raise ValidationException("Không tìm thấy khóa học")
+                raise ValidationException({"course": ["Không tìm thấy khóa học"]})
             
             return {
                 'success': True,
@@ -211,7 +211,7 @@ class CourseService:
         except ValidationException:
             raise
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy thông tin khóa học: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy thông tin khóa học: {str(e)}"]})
     
     @staticmethod
     def _format_course_details(course):
@@ -280,7 +280,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy danh sách danh mục: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy danh sách danh mục: {str(e)}"]})
     
     @staticmethod
     def get_categories_with_course_count():
@@ -305,7 +305,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy danh mục với số lượng khóa học: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy danh mục với số lượng khóa học: {str(e)}"]})
     
     @staticmethod
     def get_courses_by_category_slug(slug, page=1, per_page=12, sort_by='newest'):
@@ -314,7 +314,7 @@ class CourseService:
             # First, get the category by slug
             category = CategoryDAO.get_category_by_slug(slug)
             if not category:
-                raise ValidationException("Không tìm thấy danh mục")
+                raise ValidationException({"category": ["Không tìm thấy danh mục"]})
             
             # Validate pagination parameters
             page = max(1, int(page))
@@ -369,7 +369,7 @@ class CourseService:
         except ValidationException:
             raise
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy khóa học theo danh mục: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy khóa học theo danh mục: {str(e)}"]})
     
     @staticmethod
     def get_popular_courses(limit=10):
@@ -387,7 +387,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy khóa học phổ biến: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy khóa học phổ biến: {str(e)}"]})
     
     @staticmethod
     def get_top_rated_courses(limit=10):
@@ -405,7 +405,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy khóa học đánh giá cao: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy khóa học đánh giá cao: {str(e)}"]})
     
     @staticmethod
     def get_free_courses(page=1, per_page=12):
@@ -442,14 +442,14 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy khóa học miễn phí: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy khóa học miễn phí: {str(e)}"]})
     
     @staticmethod
     def search_courses(search_term, page=1, per_page=12):
         """Search courses"""
         try:
             if not search_term or len(search_term.strip()) < 2:
-                raise ValidationException("Từ khóa tìm kiếm phải có ít nhất 2 ký tự")
+                raise ValidationException({"search_term": ["Từ khóa tìm kiếm phải có ít nhất 2 ký tự"]})
             
             page = max(1, int(page))
             per_page = min(50, max(1, int(per_page)))
@@ -479,7 +479,7 @@ class CourseService:
         except ValidationException:
             raise
         except Exception as e:
-            raise ValidationException(f"Lỗi khi tìm kiếm khóa học: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi tìm kiếm khóa học: {str(e)}"]})
     
     @staticmethod
     def get_course_statistics():
@@ -493,7 +493,7 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy thống kê khóa học: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy thống kê khóa học: {str(e)}"]})
     
     @staticmethod
     def get_filter_options():
@@ -547,4 +547,4 @@ class CourseService:
             }
             
         except Exception as e:
-            raise ValidationException(f"Lỗi khi lấy tùy chọn bộ lọc: {str(e)}")
+            raise ValidationException({"error": [f"Lỗi khi lấy tùy chọn bộ lọc: {str(e)}"]})

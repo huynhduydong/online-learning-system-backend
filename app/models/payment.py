@@ -40,9 +40,9 @@ class Payment(db.Model):
     enrollment_id = db.Column(db.String(36), db.ForeignKey('enrollments.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     
-    # Payment information
-    payment_method = db.Column(db.Enum(PaymentMethod), nullable=False)
-    status = db.Column(db.Enum(PaymentStatus), nullable=False, default=PaymentStatus.PENDING)
+    # Payment information  
+    payment_method = db.Column(db.Enum(PaymentMethod, values_callable=lambda obj: [e.value for e in obj]), nullable=False)
+    status = db.Column(db.Enum(PaymentStatus, values_callable=lambda obj: [e.value for e in obj]), nullable=False, default=PaymentStatus.PENDING)
     amount = db.Column(Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), default='VND')
     

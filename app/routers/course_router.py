@@ -118,7 +118,8 @@ def search_courses():
 def get_categories():
     """Get all course categories"""
     try:
-        categories = CourseService.get_categories()
+        categories_response = CourseService.get_categories()
+        categories = categories_response['data']  # Extract actual categories list
         
         # Format response to match requirements
         formatted_categories = []
@@ -138,7 +139,8 @@ def get_categories():
 def get_categories_with_count():
     """Get categories with course count"""
     try:
-        categories = CourseService.get_categories_with_count()
+        categories_response = CourseService.get_categories_with_course_count()
+        categories = categories_response['data']  # Extract actual categories list
         return success_response(categories, "Categories with count retrieved successfully")
     except Exception as e:
         return error_response("Internal server error")

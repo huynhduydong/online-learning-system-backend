@@ -142,7 +142,7 @@ class InstructorService:
         try:
             course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
             if not course:
-                raise ValidationException("Course not found")
+                raise ValidationException({"course": ["Course not found"]})
             
             return InstructorService._format_instructor_course_details(course)
             
@@ -159,7 +159,7 @@ class InstructorService:
         try:
             course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
             if not course:
-                raise ValidationException("Course not found")
+                raise ValidationException({"course": ["Course not found"]})
             
             # Update fields
             for field, value in kwargs.items():
@@ -196,7 +196,7 @@ class InstructorService:
         try:
             course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
             if not course:
-                raise ValidationException("Course not found")
+                raise ValidationException({"course": ["Course not found"]})
             
             if course.status == CourseStatus.PUBLISHED:
                 raise BusinessLogicException("Course is already published")
@@ -233,7 +233,7 @@ class InstructorService:
         try:
             course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
             if not course:
-                raise ValidationException("Course not found")
+                raise ValidationException({"course": ["Course not found"]})
             
             if course.status != CourseStatus.PUBLISHED:
                 raise BusinessLogicException("Course is not published")
@@ -265,7 +265,7 @@ class InstructorService:
         try:
             course = Course.query.filter_by(id=course_id, instructor_id=instructor_id).first()
             if not course:
-                raise ValidationException("Course not found")
+                raise ValidationException({"course": ["Course not found"]})
             
             # Check if course has enrollments
             if course.total_enrollments > 0:

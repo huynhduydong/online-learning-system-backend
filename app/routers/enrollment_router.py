@@ -61,8 +61,9 @@ def register_for_course():
         return success_response('Registration started successfully', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error in registration: {e.errors}")
-        return error_response('Validation failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error in registration: {details}")
+        return error_response('Validation failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error in registration: {str(e)}")
         return error_response('Internal server error', 500)
@@ -100,8 +101,9 @@ def process_payment():
         return success_response('Payment processed successfully', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error in payment: {e.errors}")
-        return error_response('Payment failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error in payment: {details}")
+        return error_response('Payment failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error in payment: {str(e)}")
         return error_response('Internal server error', 500)
@@ -134,8 +136,9 @@ def activate_course_access(enrollment_id):
             return success_response('Activation in progress', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error in activation: {e.errors}")
-        return error_response('Activation failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error in activation: {details}")
+        return error_response('Activation failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error in activation: {str(e)}")
         return error_response('Internal server error', 500)
@@ -164,8 +167,9 @@ def get_enrollment_status(enrollment_id):
         return success_response('Enrollment status retrieved', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error getting enrollment status: {e.errors}")
-        return error_response('Not found', 404, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error getting enrollment status: {details}")
+        return error_response('Not found', 404, details=details)
     except Exception as e:
         logger.error(f"Unexpected error getting enrollment status: {str(e)}")
         return error_response('Internal server error', 500)
@@ -207,8 +211,9 @@ def get_my_courses():
                               pagination=result['pagination'])
         
     except ValidationException as e:
-        logger.warning(f"Validation error getting user enrollments: {e.errors}")
-        return error_response('Validation failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error getting user enrollments: {details}")
+        return error_response('Validation failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error getting user enrollments: {str(e)}")
         return error_response('Internal server error', 500)
@@ -244,8 +249,9 @@ def check_course_access(course_id):
             return success_response('No access to course', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error checking course access: {e.errors}")
-        return error_response('Validation failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error checking course access: {details}")
+        return error_response('Validation failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error checking course access: {str(e)}")
         return error_response('Internal server error', 500)
@@ -278,8 +284,9 @@ def retry_activation(enrollment_id):
             return success_response('Retry activation failed', result)
         
     except ValidationException as e:
-        logger.warning(f"Validation error in retry activation: {e.errors}")
-        return error_response('Retry failed', 422, details=e.errors)
+        details = getattr(e, "errors", {"error": [str(e)]})
+        logger.warning(f"Validation error in retry activation: {details}")
+        return error_response('Retry failed', 422, details=details)
     except Exception as e:
         logger.error(f"Unexpected error in retry activation: {str(e)}")
         return error_response('Internal server error', 500)
@@ -289,7 +296,8 @@ def retry_activation(enrollment_id):
 @enrollment_router.errorhandler(ValidationException)
 def handle_validation_error(error):
     """Handle validation exceptions"""
-    return error_response('Validation failed', 422, details=error.errors)
+    details = getattr(error, "errors", {"error": [str(error)]})
+    return error_response('Validation failed', 422, details=details)
 
 
 @enrollment_router.errorhandler(404)
