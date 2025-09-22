@@ -6,6 +6,8 @@ Implements comprehensive validation for course catalog browsing functionality.
 from pydantic import BaseModel, Field, validator
 from typing import Optional, List
 from enum import Enum
+from marshmallow import Schema, fields, validate, validates_schema, ValidationError
+from app.models.course import DifficultyLevel as ModelDifficultyLevel, CourseStatus as ModelCourseStatus
 
 
 class SortOrder(str, Enum):
@@ -231,3 +233,54 @@ class CourseCatalogResponse(BaseModel):
     pagination: PaginationResponse
     filters_applied: dict
     total_found: int
+
+
+# Marshmallow Schemas for Instructor API
+
+class CourseCreateSchema(Schema):
+    """Marshmallow schema for course creation"""
+    
+    title = fields.Str(required=True, validate=validate.Length(min=1, max=100))
+    short_description = fields.Str(required=True, validate=validate.Length(min=1, max=500))
+    slug = fields.Str(load_default=None, validate=validate.Length(max=255))
+    language = fields.Str(load_default='vi', validate=validate.Length(min=2, max=5))
+    difficulty_level = fields.Str(load_default='beginner', validate=validate.OneOf(['beginner', 'intermediate', 'advanced']))
+    category_id = fields.Int(load_default=None, validate=validate.Range(min=1))
+    price = fields.Decimal(load_default=0, validate=validate.Range(min=0))
+    is_free = fields.Bool(load_default=True)
+    
+    @validates_schema
+    def validate_pricing(self, data, **kwargs):
+        """Validate pricing consistency"""
+        price = data.get('price', 0)
+        is_free = data.get('is_free', True)
+        
+        if price > 0 and is_free:
+            raise ValidationError("Course cannot be free if price is greater than 0")
+        if price == 0 and not is_free:
+            data['is_free'] = True
+
+
+class CourseUpdateSchema(Schema):
+    """Marshmallow schema for course updates"""
+    
+    title = fields.Str(validate=validate.Length(min=1, max=100))
+    short_description = fields.Str(validate=validate.Length(min=1, max=500))
+    slug = fields.Str(validate=validate.Length(max=255))
+    language = fields.Str(validate=validate.Length(min=2, max=5))
+    difficulty_level = fields.Str(validate=validate.OneOf(['beginner', 'intermediate', 'advanced']))
+    category_id = fields.Int(validate=validate.Range(min=1))
+    price = fields.Decimal(validate=validate.Range(min=0))
+    is_free = fields.Bool()
+    
+    @validates_schema
+    def validate_pricing(self, data, **kwargs):
+        """Validate pricing consistency"""
+        price = data.get('price')
+        is_free = data.get('is_free')
+        
+        if price is not None and is_free is not None:
+            if price > 0 and is_free:
+                raise ValidationError("Course cannot be free if price is greater than 0")
+            if price == 0 and not is_free:
+                data['is_free'] = True
