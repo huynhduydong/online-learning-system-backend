@@ -70,6 +70,14 @@ def register_routers(app):
     from app.routers.qa_router import qa_router
     from app.routers.cart_router import cart_router
     
+    # Import Q&A and Notification routers
+    from app.routers.question_router import question_router
+    from app.routers.answer_router import answer_router
+    from app.routers.comment_router import comment_router
+    from app.routers.vote_router import vote_router
+    from app.routers.tag_router import tag_router
+    from app.routers.notification_router import notification_router
+    
     # Register routers with URL prefixes
     routers = [
         (auth_router, '/api/auth'),
@@ -80,7 +88,17 @@ def register_routers(app):
         (payment_router, '/api/payments'),
         (progress_router, '/api/progress'),
         (qa_router, '/api/qa'),
-        (cart_router, '/api/cart')
+        (cart_router, '/api/cart'),
+        
+        # Q&A System routers
+        (question_router, '/api/questions'),
+        (answer_router, '/api/answers'),
+        (comment_router, '/api/comments'),
+        (vote_router, '/api/votes'),
+        (tag_router, '/api/tags'),
+        
+        # Notification System router
+        (notification_router, '/api/notifications')
     ]
     
     for router, url_prefix in routers:

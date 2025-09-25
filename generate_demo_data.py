@@ -25,7 +25,9 @@ from app.models.progress import LessonProgress, CourseProgress, ProgressStatus
 from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.models.cart import Cart, CartItem, CartStatus
 from app.models.coupon import Coupon, CouponType, CouponStatus
-from app.models.qa import Question, Answer, Vote
+from app.models.qa import Question
+from app.models.answer import Answer
+from app.models.vote import Vote
 
 # Initialize Faker for Vietnamese locale
 fake = Faker(['vi_VN', 'en_US'])

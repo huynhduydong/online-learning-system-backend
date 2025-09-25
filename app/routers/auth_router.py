@@ -8,7 +8,7 @@ Business Requirements:
 - Account security với failed login tracking
 """
 
-from flask import Blueprint, request, current_app
+from flask import Blueprint, request, current_app, jsonify
 from flask_jwt_extended import create_refresh_token, jwt_required, get_jwt_identity
 from marshmallow import ValidationError
 

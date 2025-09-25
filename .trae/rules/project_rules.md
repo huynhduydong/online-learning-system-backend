@@ -411,3 +411,11 @@ def start_new_session():
 **Last Updated**: January 2025
 **Version**: 1.1
 **Maintainer**: Development Team
+
+connect:
+  host: localhost
+  port: 3306
+  user: root
+  password: root
+  database: online_learning_system
+--  mysql -u root -proot -h localhost -P 3306
