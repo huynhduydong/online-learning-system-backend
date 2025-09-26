@@ -555,6 +555,8 @@ class QuestionService:
                 if not tag:
                     tag = self.tag_dao.create_tag(tag_name)
                 
+                if not isinstance(tag, Tag):
+                    raise ValidationException(f"Tag object expected, got {type(tag)} for tag '{tag_name}'")
                 tag_ids.append(tag.id)
             
             # Update question tags
