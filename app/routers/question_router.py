@@ -215,7 +215,9 @@ def update_question(question_id):
         result = question_service.update_question(
             question_id=question_id,
             user_id=int(user_id),
-            **validated_data
+            title=validated_data.get('title'),
+            content=validated_data.get('content'),
+            tags=validated_data.get('tags')
         )
         
         return success_response(
