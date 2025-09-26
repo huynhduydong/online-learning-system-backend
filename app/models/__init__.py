@@ -7,7 +7,14 @@ from app.models.course import Course, Category, Module, Lesson, Content, Difficu
 from app.models.enrollment import Enrollment, EnrollmentStatus
 from app.models.progress import Progress, Achievement, Certificate, LessonProgress, CourseProgress, ProgressStatus
 from app.models.payment import Payment, Transaction, PaymentStatus
-from app.models.qa import Question, Answer, Vote
+
+# Q&A and Notification models
+from app.models.qa import Question
+from app.models.answer import Answer
+from app.models.vote import Vote
+from app.models.comment import Comment, CommentMention
+from app.models.tag import Tag, QuestionTag
+from app.models.notification import Notification
 
 __all__ = [
     'User', 'UserRole',
@@ -15,5 +22,5 @@ __all__ = [
     'Enrollment', 'EnrollmentStatus',
     'Progress', 'Achievement', 'Certificate', 'LessonProgress', 'CourseProgress', 'ProgressStatus',
     'Payment', 'Transaction', 'PaymentStatus',
-    'Question', 'Answer', 'Vote'
+    'Question', 'Answer', 'Vote', 'Comment', 'CommentMention', 'Tag', 'QuestionTag', 'Notification'
 ]

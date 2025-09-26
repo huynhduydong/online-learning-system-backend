@@ -6,10 +6,17 @@ Online Learning System Backend
 from app import create_app, db
 from app.models import User, Course, Enrollment, Progress, Payment, Question, Answer, LessonProgress, CourseProgress
 import os
+import logging
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Create Flask application
 app = create_app()

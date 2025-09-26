@@ -21,6 +21,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app, db
 from app.models.user import User, UserRole
+from app.models.vote import Vote
+from app.models.qa import Question
+from app.models.answer import Answer
+from app.models.comment import Comment
 
 # Mock data generators (thay thế Faker)
 VIETNAMESE_FIRST_NAMES = [
