@@ -91,12 +91,18 @@ class Question(db.Model):
             # Author with error handling
             try:
                 if self.author:
+                    # Simplify role extraction logic
+                    author_role = getattr(self.author, 'role', 'student')
+                    if hasattr(author_role, 'value'):
+                        author_role_value = author_role.value
+                    else:
+                        author_role_value = author_role
                     result['author'] = {
                         'id': self.author.id,
                         'full_name': self.author.full_name,
                         'email': self.author.email,
                         'avatar_url': getattr(self.author, 'avatar_url', None),
-                        'role': getattr(self.author, 'role', 'student').value if hasattr(getattr(self.author, 'role', 'student'), 'value') else getattr(self.author, 'role', 'student')
+                        'role': author_role_value
                     }
                 else:
                     result['author'] = {
