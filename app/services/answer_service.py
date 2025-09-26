@@ -24,7 +24,7 @@ class AnswerService:
         self.vote_dao = VoteDAO()
         self.comment_dao = CommentDAO()
     
-    def get_question_answers(self, question_id, page=1, per_page=20, sort_by='votes', user_id=None):
+    def get_question_answers(self, question_id, page=1, per_page=20, sort_by='votes', sort_order='desc', user_id=None):
         """
         Lấy danh sách câu trả lời của một câu hỏi
         
@@ -33,6 +33,7 @@ class AnswerService:
             page: Số trang
             per_page: Số câu trả lời mỗi trang
             sort_by: Sắp xếp theo (votes, newest, oldest)
+            sort_order: Thứ tự sắp xếp (asc, desc)
             user_id: ID người dùng (để lấy thông tin vote)
             
         Returns:
@@ -53,6 +54,7 @@ class AnswerService:
             if sort_by not in valid_sorts:
                 sort_by = 'votes'
             
+            # Note: sort_order is accepted but not used by DAO (DAO has its own sort logic)
             # Get answers from DAO
             result = self.answer_dao.get_answers_by_question(
                 question_id=question_id,
@@ -140,10 +142,21 @@ class AnswerService:
             )
             
             # Update question activity
-            self.question_dao.update_activity(question_id)
+            self.question_dao.update_question_activity(question_id)
             
             # Get formatted answer data
-            answer_data = self.answer_dao.get_answer_by_id(answer.id)
+            try:
+                answer_data = self.answer_dao.get_answer_by_id(answer.id)
+            except Exception as get_error:
+                # Fallback to simple response
+                answer_data = answer.to_dict() if hasattr(answer, 'to_dict') else {
+                    'id': answer.id,
+                    'content': answer.content,
+                    'question_id': answer.question_id,
+                    'author_id': answer.author_id,
+                    'is_accepted': answer.is_accepted,
+                    'created_at': answer.created_at.isoformat() if answer.created_at else None
+                }
             
             return {
                 'success': True,

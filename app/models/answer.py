@@ -53,10 +53,10 @@ class Answer(db.Model):
                 'full_name': self.author.full_name,
                 'email': self.author.email,
                 'avatar_url': getattr(self.author, 'avatar_url', None),
-                'role': getattr(self.author, 'role', 'student')
+                'role': getattr(self.author, 'role', 'student').value if hasattr(getattr(self.author, 'role', 'student'), 'value') else str(getattr(self.author, 'role', 'student'))
             },
             'attachment_url': self.attachment_url,
-            'comment_count': self.get_comment_count()
+            'comment_count': 0  # Temporarily disabled due to schema issue
         }
         
         # Add user-specific data

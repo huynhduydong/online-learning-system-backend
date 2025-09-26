@@ -11,7 +11,7 @@ import traceback
 
 from app.services.question_service import QuestionService
 from app.utils.response import success_response, error_response, validation_error_response, created_response
-from app.utils.auth import get_current_user_optional
+from app.utils.auth import get_current_user_optional, get_current_user
 from app.exceptions.base import ValidationException, AuthenticationException, BusinessLogicException
 
 question_router = Blueprint('questions', __name__)
@@ -41,7 +41,7 @@ class VoteSchema(Schema):
     vote_type = fields.Str(required=True, validate=validate.OneOf(['upvote', 'downvote']))
 
 
-@question_router.route('/', methods=['GET'])
+@question_router.route('/', methods=['GET'], strict_slashes=False)
 def get_questions():
     """
     GET /api/questions
@@ -110,7 +110,7 @@ def get_question_by_id(question_id):
     """
     try:
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get question details
@@ -127,7 +127,7 @@ def get_question_by_id(question_id):
         return error_response("Lỗi khi lấy chi tiết câu hỏi", 500)
 
 
-@question_router.route('/', methods=['POST'])
+@question_router.route('/', methods=['POST'], strict_slashes=False)
 @jwt_required()
 def create_question():
     """
@@ -304,7 +304,7 @@ def vote_question(question_id):
         return error_response("Lỗi khi vote câu hỏi", 500)
 
 
-@question_router.route('/search', methods=['GET'])
+@question_router.route('/search', methods=['GET'], strict_slashes=False)
 def search_questions():
     """
     GET /api/questions/search
@@ -330,7 +330,7 @@ def search_questions():
             filters['tag'] = tag
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Search questions
@@ -368,7 +368,7 @@ def get_user_questions(user_id):
         sort_order = request.args.get('sort_order', 'desc')
         
         # Get current user for permission check
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         current_user_id = current_user.id if current_user else None
         
         # Get user questions
@@ -392,7 +392,7 @@ def get_user_questions(user_id):
         return error_response("Lỗi khi lấy danh sách câu hỏi của user", 500)
 
 
-@question_router.route('/trending', methods=['GET'])
+@question_router.route('/trending', methods=['GET'], strict_slashes=False)
 def get_trending_questions():
     """
     GET /api/questions/trending
@@ -405,7 +405,7 @@ def get_trending_questions():
         course_id = request.args.get('course_id', type=int)
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get trending questions
@@ -438,7 +438,7 @@ def get_related_questions(question_id):
         limit = request.args.get('limit', 5, type=int)
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get related questions

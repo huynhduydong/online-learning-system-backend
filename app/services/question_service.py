@@ -86,36 +86,65 @@ class QuestionService:
         Returns:
             dict: Chi tiết câu hỏi
         """
+        import logging
+        import traceback
+        
+        logging.info(f"🔍 QUESTION_SERVICE: Getting question {question_id} for user {user_id}")
+        
         try:
+            logging.info(f"📊 QUESTION_SERVICE: Calling question_dao.get_question_by_id({question_id})")
             question = self.question_dao.get_question_by_id(question_id)
             
             if not question:
+                logging.warning(f"❌ QUESTION_SERVICE: Question {question_id} not found")
                 raise ValidationException("Không tìm thấy câu hỏi")
             
+            logging.info(f"✅ QUESTION_SERVICE: Question found: {question.get('title', 'No title')}")
+            
             # Tăng view count nếu không phải tác giả
-            if user_id != question['author']['id']:
-                self.question_dao.increment_view_count(question_id)
-                question['viewCount'] += 1
+            try:
+                if user_id != question['author']['id']:
+                    logging.info(f"📈 QUESTION_SERVICE: Incrementing view count for question {question_id}")
+                    self.question_dao.increment_view_count(question_id)
+                    question['viewCount'] += 1
+            except Exception as e:
+                logging.error(f"❌ QUESTION_SERVICE: Error incrementing view count: {str(e)}")
+                # Continue without incrementing view count
             
             # Lấy thông tin vote của user
-            if user_id:
-                user_vote = self.vote_dao.get_user_vote(user_id, 'question', question_id)
-                question['userVote'] = user_vote.vote_type if user_vote else None
-            else:
+            try:
+                if user_id:
+                    logging.info(f"🗳️ QUESTION_SERVICE: Getting user vote for user {user_id}")
+                    user_vote = self.vote_dao.get_user_vote(user_id, 'question', question_id)
+                    question['userVote'] = user_vote.vote_type if user_vote else None
+                else:
+                    question['userVote'] = None
+            except Exception as e:
+                logging.error(f"❌ QUESTION_SERVICE: Error getting user vote: {str(e)}")
                 question['userVote'] = None
             
             # Lấy tag của question
-            tags = self.tag_dao.get_question_tags(question_id)
-            question['tags'] = [tag.to_dict() for tag in tags]
+            try:
+                logging.info(f"🏷️ QUESTION_SERVICE: Getting tags for question {question_id}")
+                tags = self.tag_dao.get_question_tags(question_id)
+                question['tags'] = [tag.to_dict() for tag in tags]
+                logging.info(f"✅ QUESTION_SERVICE: Successfully got {len(tags)} tags")
+            except Exception as e:
+                logging.error(f"❌ QUESTION_SERVICE: Error getting tags: {str(e)}")
+                question['tags'] = []
             
+            logging.info(f"✅ QUESTION_SERVICE: Successfully processed question {question_id}")
             return {
                 'success': True,
                 'data': question
             }
             
         except ValidationException:
+            logging.warning(f"⚠️ QUESTION_SERVICE: ValidationException for question {question_id}")
             raise
         except Exception as e:
+            logging.error(f"❌ QUESTION_SERVICE: Unexpected error for question {question_id}: {str(e)}")
+            logging.error(f"❌ QUESTION_SERVICE: Full traceback: {traceback.format_exc()}")
             raise ValidationException(f"Lỗi khi lấy chi tiết câu hỏi: {str(e)}")
     
     def create_question(self, user_id, data):

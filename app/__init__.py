@@ -54,7 +54,16 @@ def init_extensions(app):
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    cors.init_app(app)
+    
+    # Initialize CORS with configuration from app config
+    cors.init_app(app, 
+                  origins=app.config.get('CORS_ORIGINS', ['*']),
+                  methods=app.config.get('CORS_METHODS', ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD']),
+                  allow_headers=app.config.get('CORS_ALLOW_HEADERS', ['*']),
+                  expose_headers=app.config.get('CORS_EXPOSE_HEADERS', []),
+                  supports_credentials=app.config.get('CORS_SUPPORTS_CREDENTIALS', False),
+                  max_age=app.config.get('CORS_MAX_AGE', 86400))
+    
     limiter.init_app(app)
 
 
@@ -107,6 +116,14 @@ def register_routers(app):
 
 def setup_middleware(app):
     """Setup application middleware"""
+    
+    @app.before_request
+    def handle_preflight():
+        """Handle CORS preflight requests"""
+        from flask import request
+        if request.method == "OPTIONS":
+            # Let Flask-CORS handle the preflight response
+            return
     
     @app.before_request
     def track_user_activity():

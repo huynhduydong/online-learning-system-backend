@@ -37,6 +37,24 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
     STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
     STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
+    
+    # CORS configuration - Allow all domains
+    CORS_ORIGINS = ["*"]  # Allow all origins
+    CORS_METHODS = ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"]  # Allow all common HTTP methods
+    CORS_ALLOW_HEADERS = [
+        "Accept",
+        "Accept-Language", 
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
+    ]  # Specific headers for better compatibility
+    CORS_EXPOSE_HEADERS = ["Content-Range", "X-Content-Range"]  # Headers that client can access
+    CORS_SUPPORTS_CREDENTIALS = False  # Set to False when using wildcard origins for better compatibility
+    CORS_MAX_AGE = 86400  # Cache preflight response for 24 hours
 
 
 class DevelopmentConfig(Config):

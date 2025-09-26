@@ -39,16 +39,14 @@ class AnswerDAO(BaseDAO):
         """
         try:
             query = self.session.query(Answer).options(
-                joinedload(Answer.author),
-                joinedload(Answer.attachments)
+                joinedload(Answer.author)
             ).filter(Answer.question_id == question_id)
             
             # Sắp xếp
             if sort_by == 'votes':
-                # Câu trả lời được chấp nhận lên đầu, sau đó theo vote score
+                # Câu trả lời được chấp nhận lên đầu, sau đó theo created_at (vote_score sẽ được sort trong Python)
                 query = query.order_by(
                     desc(Answer.is_accepted),
-                    desc(Answer.vote_score),
                     desc(Answer.created_at)
                 )
             elif sort_by == 'newest':
@@ -56,10 +54,9 @@ class AnswerDAO(BaseDAO):
             elif sort_by == 'oldest':
                 query = query.order_by(asc(Answer.created_at))
             else:
-                # Mặc định theo votes
+                # Mặc định theo accepted và created_at
                 query = query.order_by(
                     desc(Answer.is_accepted),
-                    desc(Answer.vote_score),
                     desc(Answer.created_at)
                 )
             
@@ -91,14 +88,16 @@ class AnswerDAO(BaseDAO):
         """
         try:
             query = self.session.query(Answer).options(
-                joinedload(Answer.author),
-                joinedload(Answer.attachments)
+                joinedload(Answer.author)
             )
             
             if include_question:
                 query = query.options(joinedload(Answer.question))
             
-            return query.filter(Answer.id == answer_id).first()
+            answer = query.filter(Answer.id == answer_id).first()
+            if answer:
+                return answer.to_dict()
+            return None
         except SQLAlchemyError as e:
             raise e
     
@@ -117,8 +116,7 @@ class AnswerDAO(BaseDAO):
         """
         try:
             query = self.session.query(Answer).options(
-                joinedload(Answer.question),
-                joinedload(Answer.attachments)
+                joinedload(Answer.question)
             ).filter(Answer.author_id == user_id)
             
             if status == 'accepted':
@@ -163,7 +161,7 @@ class AnswerDAO(BaseDAO):
             ).filter(
                 Answer.created_at >= since_date
             ).order_by(
-                desc(Answer.vote_score)
+                desc(Answer.created_at)
             ).limit(limit).all()
         except SQLAlchemyError as e:
             raise e
@@ -298,7 +296,7 @@ class AnswerDAO(BaseDAO):
             
             return {
                 'answerId': answer_id,
-                'voteScore': answer.vote_score,
+                'voteScore': upvotes - downvotes,  # Calculate vote score
                 'upvotes': upvotes,
                 'downvotes': downvotes,
                 'commentsCount': comments_count,
@@ -346,7 +344,6 @@ class AnswerDAO(BaseDAO):
             # Sắp xếp theo độ liên quan
             query = query.order_by(
                 desc(Answer.is_accepted),
-                desc(Answer.vote_score),
                 desc(Answer.created_at)
             )
             
@@ -405,39 +402,39 @@ class AnswerDAO(BaseDAO):
         except SQLAlchemyError as e:
             raise e
     
-    def update_vote_score(self, answer_id):
+    def create_answer(self, question_id, author_id, content, attachment_url=None):
         """
-        Cập nhật vote score của câu trả lời
+        Tạo câu trả lời mới
         
         Args:
-            answer_id: ID câu trả lời
+            question_id: ID câu hỏi
+            author_id: ID tác giả
+            content: Nội dung câu trả lời
+            attachment_url: URL file đính kèm (optional)
+            
+        Returns:
+            Answer: Câu trả lời vừa được tạo
+            
+        Raises:
+            SQLAlchemyError: Lỗi database
         """
         try:
-            # Tính vote score
-            upvotes = self.session.query(Vote).filter(
-                and_(
-                    Vote.votable_type == 'answer',
-                    Vote.votable_id == answer_id,
-                    Vote.vote_type == 'upvote'
-                )
-            ).count()
+            answer = Answer(
+                content=content,
+                question_id=question_id,
+                author_id=author_id,
+                attachment_url=attachment_url
+            )
             
-            downvotes = self.session.query(Vote).filter(
-                and_(
-                    Vote.votable_type == 'answer',
-                    Vote.votable_id == answer_id,
-                    Vote.vote_type == 'downvote'
-                )
-            ).count()
-            
-            vote_score = upvotes - downvotes
-            
-            # Cập nhật vote score
-            self.session.query(Answer).filter(Answer.id == answer_id).update({
-                'vote_score': vote_score
-            })
+            self.session.add(answer)
             self.session.commit()
+            
+            # Refresh to get all relationships loaded
+            self.session.refresh(answer)
+            
+            return answer
             
         except SQLAlchemyError as e:
             self.session.rollback()
             raise e
+    

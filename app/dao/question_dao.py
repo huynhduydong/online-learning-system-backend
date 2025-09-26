@@ -85,6 +85,10 @@ class QuestionDAO(BaseDAO):
         if filters.get('scope'):
             query = query.filter(Question.scope == filters['scope'])
         
+        # Lọc theo scope_id
+        if filters.get('scope_id'):
+            query = query.filter(Question.scope_id == filters['scope_id'])
+        
         # Lọc theo tác giả
         if filters.get('author_id'):
             query = query.filter(Question.author_id == filters['author_id'])
@@ -166,17 +170,40 @@ class QuestionDAO(BaseDAO):
         Returns:
             Question hoặc None
         """
+        import logging
+        import traceback
+        
+        logging.info(f"🗄️ QUESTION_DAO: Getting question {question_id}, include_deleted={include_deleted}")
+        
         try:
-            query = self.session.query(Question).filter(Question.id == question_id)
+            query = self.session.query(Question).options(
+                joinedload(Question.author),
+                joinedload(Question.question_tags),
+                joinedload(Question.answers)
+            ).filter(Question.id == question_id)
             
             if not include_deleted:
                 query = query.filter(Question.status != 'deleted')
             
+            logging.info(f"🔍 QUESTION_DAO: Executing query for question {question_id}")
             question = query.first()
+            
             if question:
-                return question.to_dict()
+                logging.info(f"✅ QUESTION_DAO: Question found: {question.title}")
+                logging.info(f"🔗 QUESTION_DAO: Converting to dict for question {question_id}")
+                try:
+                    result = question.to_dict()
+                    logging.info(f"✅ QUESTION_DAO: Successfully converted to dict for question {question_id}")
+                    return result
+                except Exception as to_dict_error:
+                    logging.error(f"❌ QUESTION_DAO: Error in to_dict() for question {question_id}: {str(to_dict_error)}")
+                    logging.error(f"❌ QUESTION_DAO: to_dict() traceback: {traceback.format_exc()}")
+                    raise to_dict_error
+            else:
+                logging.warning(f"❌ QUESTION_DAO: Question {question_id} not found")
             return None
         except SQLAlchemyError as e:
+            logging.error(f"❌ QUESTION_DAO: SQLAlchemy error for question {question_id}: {str(e)}")
             raise e
     
     def search_questions(self, search_term, filters=None, page=1, per_page=20):

@@ -53,32 +53,79 @@ class Question(db.Model):
         return f'<Question {self.id}: {self.title[:50]}>'
     
     def to_dict(self, current_user_id=None, include_answers=False, include_comments=False):
-        result = {
-            'id': self.id,
-            'title': self.title,
-            'content': self.content,
-            'category': self.category,
-            'scope': self.scope,
-            'scope_id': self.scope_id,
-            'status': self.status,
-            'is_pinned': self.is_pinned,
-            'is_featured': self.is_featured,
-            'vote_score': self.get_vote_score(),
-            'answer_count': self.get_answer_count(),
-            'view_count': self.view_count,
-            'attachment_url': self.attachment_url,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'last_activity_at': self.last_activity_at.isoformat() if self.last_activity_at else None,
-            'author': {
-                'id': self.author.id,
-                'full_name': self.author.full_name,
-                'email': self.author.email,
-                'avatar_url': getattr(self.author, 'avatar_url', None),
-                'role': getattr(self.author, 'role', 'student').value if hasattr(getattr(self.author, 'role', 'student'), 'value') else getattr(self.author, 'role', 'student')
-            },
-            'tags': [qt.tag.to_dict() for qt in self.question_tags]
-        }
+        import logging
+        
+        try:
+            # Basic fields
+            result = {
+                'id': self.id,
+                'title': self.title,
+                'content': self.content,
+                'category': self.category,
+                'scope': self.scope,
+                'scope_id': self.scope_id,
+                'status': self.status,
+                'is_pinned': self.is_pinned,
+                'is_featured': self.is_featured,
+                'view_count': self.view_count,
+                'attachment_url': self.attachment_url,
+                'created_at': self.created_at.isoformat() if self.created_at else None,
+                'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+                'last_activity_at': self.last_activity_at.isoformat() if self.last_activity_at else None,
+            }
+            
+            # Vote score with error handling
+            try:
+                result['vote_score'] = self.get_vote_score()
+            except Exception as e:
+                logging.error(f"Error getting vote_score for question {self.id}: {str(e)}")
+                result['vote_score'] = 0
+            
+            # Answer count with error handling
+            try:
+                result['answer_count'] = self.get_answer_count()
+            except Exception as e:
+                logging.error(f"Error getting answer_count for question {self.id}: {str(e)}")
+                result['answer_count'] = 0
+            
+            # Author with error handling
+            try:
+                if self.author:
+                    result['author'] = {
+                        'id': self.author.id,
+                        'full_name': self.author.full_name,
+                        'email': self.author.email,
+                        'avatar_url': getattr(self.author, 'avatar_url', None),
+                        'role': getattr(self.author, 'role', 'student').value if hasattr(getattr(self.author, 'role', 'student'), 'value') else getattr(self.author, 'role', 'student')
+                    }
+                else:
+                    result['author'] = {
+                        'id': self.author_id,
+                        'full_name': 'Unknown User',
+                        'email': 'unknown@example.com',
+                        'avatar_url': None,
+                        'role': 'student'
+                    }
+            except Exception as e:
+                logging.error(f"Error getting author for question {self.id}: {str(e)}")
+                result['author'] = {
+                    'id': self.author_id,
+                    'full_name': 'Unknown User',
+                    'email': 'unknown@example.com',
+                    'avatar_url': None,
+                    'role': 'student'
+                }
+            
+            # Tags with error handling
+            try:
+                result['tags'] = [qt.tag.to_dict() for qt in self.question_tags if qt.tag is not None]
+            except Exception as e:
+                logging.error(f"Error getting tags for question {self.id}: {str(e)}")
+                result['tags'] = []
+                
+        except Exception as e:
+            logging.error(f"Error in to_dict for question {self.id}: {str(e)}")
+            raise e
         
         # Add user-specific data
         if current_user_id:

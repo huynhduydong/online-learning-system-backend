@@ -9,13 +9,14 @@ from marshmallow import Schema, fields, validate, ValidationError
 
 from app.services.answer_service import AnswerService
 from app.utils.response import success_response, error_response, validation_error_response, created_response
-from app.utils.auth import get_current_user
+from app.utils.auth import get_current_user, get_current_user_optional
 from app.exceptions.base import ValidationException, AuthenticationException, BusinessLogicException
 
 answer_router = Blueprint('answers', __name__)
 
 # Initialize service
 answer_service = AnswerService()
+
 
 
 # Validation schemas
@@ -45,7 +46,7 @@ def get_question_answers(question_id):
         sort_order = request.args.get('sort_order', 'desc')
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get question answers
@@ -77,7 +78,7 @@ def get_answer_by_id(answer_id):
     """
     try:
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get answer details
@@ -329,7 +330,7 @@ def get_user_answers(user_id):
         sort_order = request.args.get('sort_order', 'desc')
         
         # Get current user for permission check
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         current_user_id = current_user.id if current_user else None
         
         # Get user answers
@@ -366,7 +367,7 @@ def get_top_answers():
         course_id = request.args.get('course_id', type=int)
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get top answers
@@ -414,7 +415,7 @@ def search_answers():
             filters['accepted_only'] = True
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Search answers
@@ -450,7 +451,7 @@ def get_recent_answers():
         course_id = request.args.get('course_id', type=int)
         
         # Get current user for personalization
-        current_user = get_current_user()
+        current_user = get_current_user_optional()
         user_id = current_user.id if current_user else None
         
         # Get recent answers
